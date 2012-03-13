@@ -1,0 +1,91 @@
+html, body {
+  font: 15px normal 'Open Sans', Trebuchet, Arial, sans-serif;
+  color: #444;
+  margin: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+body {
+  background: -moz-radial-gradient(center center, #fff, #eee) no-repeat;
+  background: -webkit-radial-gradient(center center, #fff, #eee) no-repeat;
+  color: #222;
+  overflow-x: hidden;
+  -moz-font-smoothing: antialiased;
+  -webkit-font-smoothing: antialiased;
+  padding: 3em;
+}
+.dropping {
+  background: rgba(255,0,0,0.4);
+}
+a {
+  color: navy;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+ul, li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+li {
+  padding-bottom: 2px;
+}
+:-moz-any(button, .fakebutton) {
+  background: -moz-linear-gradient(#F9F9F9 40%, #E3E3E3 70%);
+  border: 1px solid #888;
+  border-radius: 3px;
+  margin: 0 8px 0 0;
+  color: black;
+  padding: 5px 8px;
+  outline: none;
+  white-space: nowrap;
+  vertical-align: middle;
+  -moz-user-select:none;
+  user-select: none;
+  cursor: pointer;
+  text-shadow: 1px 1px #fff;
+  font-weight: 700;
+}
+:-moz-any(button, .fakebutton):not(:disabled):hover {
+  border: 1px solid #000;
+}
+:-moz-any(button, .fakebutton):not(:disabled):active {
+  background: -moz-linear-gradient(#E3E3E3 40%, #F9F9F9 70%);
+}
+:-webkit-any(button, .fakebutton) {
+  background: -webkit-linear-gradient(#F9F9F9 40%, #E3E3E3 70%);
+  border: 1px solid #888;
+  border-radius: 3px;
+  margin: 0 8px 0 0;
+  color: black;
+  padding: 5px 8px;
+  outline: none;
+  white-space: nowrap;
+  vertical-align: middle;
+  -webkit-user-select:none;
+  user-select: none;
+  cursor: pointer;
+  text-shadow: 1px 1px #fff;
+  font-weight: 700;
+}
+:-webkit-any(button, .fakebutton):not(:disabled):hover {
+  border: 1px solid #000;
+}
+:-webkit-any(button, .fakebutton):not(:disabled):active {
+  background: -webkit-linear-gradient(#E3E3E3 40%, #F9F9F9 70%);
+}
+:disabled {
+  color: #ccc;
+}
+#entries {
+  margin: 1em 0;
+}
+a.delete {
+  margin-left: 10px;
+}
+a.playing {
+  color: green;
+}
