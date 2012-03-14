@@ -39,6 +39,7 @@ function openFS() {
 
 function writeFile(file, i) {
   fs.root.getFile(file.name, {create: true}, function(fileEntry) {
+console.log(fileEntry)
     fileEntry.createWriter(function(fileWriter) {
       fileWriter.onwriteend = function(e) {
       	console.log('WRITE DONE');
@@ -106,8 +107,10 @@ function getAllEntries() {
 	  	      	return false;
 	  	      };
 	  	      li.appendChild(a);
-  	      }
-	      });
+  	      } else {
+            li.textContent = entry.name;
+          }
+	      }, onError);
   	  } else {
   	    console.log('got a directory')	
   	  }

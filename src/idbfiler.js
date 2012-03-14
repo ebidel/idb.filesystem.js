@@ -38,20 +38,52 @@ if (exports.FileError === undefined) {
 }
 
 FileError.INVALID_MODIFICATION_ERR = 9;
-
+FileError.NOT_FOUND_ERR  = 1;
 
 function MyFileError(obj) {
-  this.prototype = FileError.prototype;
+  //this.prototype = FileError.prototype;
   this.code = obj.code;
   this.name = obj.name;
 }
+MyFileError.prototype = FileError.prototype;
 
-var NOT_IMPLEMENTED_ERR = new MyFileError({name: 'Not implemented'});
+var NOT_IMPLEMENTED_ERR = new MyFileError({code: 1000, name: 'Not implemented'});
+var NOT_FOUND_ERR = new MyFileError({code: FileError.NOT_FOUND_ERR,
+                                     name: 'Not found'});
 
 var fs_ = null;
 var idb = {};
 idb.db = null;
 var FILE_STORE = 'entries';
+
+/**
+ * Interface to wrap native File.
+ *
+ * @param {Object} opts Initial values.
+ * @constructor
+ */
+function MyFile(opts) {
+  var blob_ = null;
+  var self = this;
+
+  this.size = opts.size || 0;
+  this.name = opts.name || '';
+  this.type = opts.type || '';
+
+  this.__defineGetter__('blob_', function() {
+    return blob_;
+  });
+
+  this.__defineSetter__('blob_', function(val) {
+    blob_ = val;
+    self.size = blob_.size;
+    self.name = blob_.name;
+    self.type = blob_.type;
+  });
+}
+MyFile.prototype.constructor = MyFile; 
+// TODO: figure out better way how to save slice method in structured clone.
+//MyFile.prototype.slice = Blob.prototype.slice;
 
 /**
  * Interface to writing a Blob/File.
@@ -77,7 +109,8 @@ function FileWriter(fileEntry) {
 
   this.write = function(blob) {
     var self = this;
-    fileEntry_.file_ = blob;
+    //fileEntry_.file_ = blob;
+    fileEntry_.file_.blob_ = blob;//fileEntry_.file_ = new MyFile(opts);
     idb.put(fileEntry_, function(entry) {
       if (self.onwriteend) {
         self.onwriteend(); // TOOD: send an event back here.
@@ -96,40 +129,22 @@ FileWriter.prototype = {
   }
 }
 
-/*function EntryArray(array) {
-  var array_ = array;
-
-  this.item = function(index) {
-    return array_[index];
-  } 
-}
-EntryArray.prototype = new Array();
-EntryArray.prototype.constructor = EntryArray;*/
-
 /**
  * Interface for listing a directory's contents (files and folders).
  *
  * Modeled from:
  * dev.w3.org/2009/dap/file-system/pub/FileSystem/#idl-def-DirectoryReader
  *
- * @param {FileEntry} fileEntry The FileEntry associated with this writer.
  * @constructor
  */
-function DirectoryReader() {
-
-}
+function DirectoryReader() {}
 
 DirectoryReader.prototype = {
   readEntries: function(successCallback, opt_errorCallback) {
     if (!successCallback) {
       throw Error('Expected successCallback argument.');
     }
-
-    idb.getAllEntries(function(entries) {
-      //successCallback(new EntryArray(entries));
-      successCallback(entries);
-    });
-    // TODO: call errorcallback on error.
+    idb.getAllEntries(successCallback, opt_errorCallback);
   }
 };
 
@@ -142,8 +157,7 @@ DirectoryReader.prototype = {
  *
  * @constructor
  */
-function Entry() {
-}
+function Entry() {}
 
 Entry.prototype = {
   name: null,
@@ -165,7 +179,7 @@ Entry.prototype = {
     if (!successCallback) {
       throw Error('Expected successCallback argument.');
     }
-    idb.delete(this.fullPath, function(e) {
+    idb.delete(this.fullPath, function() {
       successCallback();
     });
     // TODO: call opt_errorCallback on error.
@@ -222,8 +236,18 @@ FileEntry.prototype.file = function(successCallback, opt_errorCallback) {
   if (!successCallback) {
     throw Error('Expected successCallback argument.');
   }
-  successCallback(this.file_);
-  // TODO: call errorcallback on error.
+  if (this.file_ == null) {
+    opt_errorCallback(NOT_FOUND_ERR);
+    return;
+  }
+
+  // If we're returning a zero-length (empty) file, return the fake file obj.
+  // Otherwise, return the native File object that we've stashed.
+  var val = this.file_.blob_ == null ? this.file_ : this.file_.blob_;
+  if (!val.slice) {
+    val.slice = Blob.prototype.slice; // Hack to add back in .slice();
+  }
+  successCallback(val);
 };
 
 /**
@@ -249,8 +273,7 @@ DirectoryEntry.prototype.constructor = DirectoryEntry;
 DirectoryEntry.prototype.createReader = function() {
   return new DirectoryReader();
 };
-DirectoryEntry.prototype.getDirectory = function() {
-};
+DirectoryEntry.prototype.getDirectory = function() {};
 
 DirectoryEntry.prototype.getFile = function(path, options, successCallback,
                                             opt_errorCallback) {
@@ -260,14 +283,22 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
       // getFile must fail.
       // TODO: call opt_errorCallback
     } else if (options.create === true && !fileEntry) {
+      // Full path should always lead with a slash and not end on one (directories).
+      var fullPath = path;
+      if (fullPath[0] != '/') {
+        fullPath = '/' + fullPath;
+      }
+      if (fullPath[fullPath.length - 1] == '/') {
+        fullPath = fullPath.substring(0, fullPath.length - 1);
+      }
       // If create is true, the path doesn't exist, and no other error occurs,
       // getFile must create it as a zero-length file and return a corresponding
       // FileEntry.
-      // TODO: create a zero-length file and attach it (filEntry.file_=file).
       var fileEntry = new FileEntry();
-      fileEntry.name = path;
-      fileEntry.fullPath = path; // TODO(ericbidelman): set this correctly
+      fileEntry.name = fullPath.split('/').pop(); // Just need filename.
+      fileEntry.fullPath = fullPath; // TODO(ericbidelman): set this correctly
       fileEntry.filesystem = fs_;
+      fileEntry.file_ = new MyFile({size: 0, name: fileEntry.name}); // TODO: create a zero-length file and attach it (fileEntry.file_=file).
 
       idb.put(fileEntry, successCallback);
 
@@ -326,8 +357,7 @@ function DOMFileSystem(type, size) {
 //DOMFileSystem.prototype = {};
 
 
-exports.requestFileSystem = function(type, size, successCallback,
-                                    opt_errorCallback) {
+function requestFileSystem(type, size, successCallback, opt_errorCallback) {
   if (type != exports.TEMPORARY && type != exports.PERSISTENT) {
     if (opt_errorCallback) {
       var error = new MyFileError({code: FileError.INVALID_MODIFICATION_ERR,
@@ -341,14 +371,14 @@ exports.requestFileSystem = function(type, size, successCallback,
   idb.open(fs_.name, function(e) {
     successCallback(fs_);
   });
-};
+}
 
-exports.resolveLocalFileSystemURL = function(url, callback, opt_errorCallback) {
+function resolveLocalFileSystemURL(url, callback, opt_errorCallback) {
   if (opt_errorCallback) {
     opt_errorCallback(NOT_IMPLEMENTED_ERR);
     return;
   }
-};
+}
 
 // =============================================================================
 
@@ -474,7 +504,7 @@ idb.put = function(entry, successCallback) {
   };
 };
 
-idb.getAllEntries = function(successCallback) {
+idb.getAllEntries = function(successCallback, opt_errorCallback) {
   if (!this.db) {
     return;
   }
@@ -482,7 +512,8 @@ idb.getAllEntries = function(successCallback) {
   var tx = this.db.transaction([FILE_STORE], IDBTransaction.READ_ONLY);
 
   var results = [];
-  tx.objectStore(FILE_STORE).openCursor().onsuccess = function(e) { // TODO: Cursor data seems to be cached even after database delete
+  var request = tx.objectStore(FILE_STORE).openCursor();
+  request.onsuccess = function(e) {
     var cursor = e.target.result;
     if (cursor) {
       var val = cursor.value;
@@ -493,6 +524,7 @@ idb.getAllEntries = function(successCallback) {
       successCallback(results);
     }
   };
+  request.onerror = opt_errorCallback;
 };
 
 // Global error handler. Errors bubble from request, to transaction, to db.
@@ -514,7 +546,15 @@ exports.addEventListener('beforeunload', function(e) {
   idb.db.close();
 }, false);
 
-//exports['DirectoryEntry'] = DirectoryEntry;
-exports['idb'] = idb;
+exports.idb = idb;
+exports.requestFileSystem = requestFileSystem;
+exports.resolveLocalFileSystemURL = resolveLocalFileSystemURL;
 
-})(window);
+// Export more stuff (to window) for unit tests to do their thing.
+if (exports === window && exports.RUNNING_TESTS) {
+  exports['Entry'] = Entry;
+  exports['FileEntry'] = FileEntry;
+  exports['DirectoryEntry'] = DirectoryEntry;
+}
+
+})(self); // Don't use window because we want to run in workers.
