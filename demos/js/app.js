@@ -40,9 +40,11 @@ function openFS() {
 function writeFile(file, i) {
   fs.root.getFile(file.name, {create: true}, function(fileEntry) {
     fileEntry.createWriter(function(fileWriter) {
+      fileWriter.onwritestart = function() {
+        console.log('WRITE START');
+      };
       fileWriter.onwriteend = function() {
-        // TODO
-        console.log(this)
+        console.log('WRITE END');
       };
       fileWriter.write(file);
 	}, onError);
@@ -82,7 +84,7 @@ function getAllEntries() {
             span.title = size + 'KB';
           }
 
-  	      if (f.type.match('audio/')) {// || f.type.match('video/ogg')) {
+  	      if (f.type.match('audio/') || f.type.match('video/ogg')) {
 
             var audio = new Audio();
 

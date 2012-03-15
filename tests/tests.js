@@ -248,11 +248,12 @@ test('file()', 4, function() {
   }, onError);
 });
 
-test('FileWriter', 11, function() {
+test('FileWriter', 16, function() {
   var fs = this.fs;
   var entry = fs.root;
   var FILE_NAME = 'idb_test_file_name_writer' + Date.now();
   var BLOB_DATA = '123';
+  var MIMETYPE = 'text/plain';
 
   // FileWriter shouldn't be an accessible constructor.
   ok(window.FileWriter === undefined, 'window.FileWriter is undefined');
@@ -280,23 +281,38 @@ test('FileWriter', 11, function() {
   stop();
   entry.getFile(FILE_NAME, {create: true}, function(fileEntry) {
     fileEntry.createWriter(function(writer) {
+
       writer.onwritestart = function() {
         ok(true, 'onwritestart fired');
         ok(this === writer, 'this is writer object');
         equal(this.position, 0, '.position is 0');
         equal(this.length, 0, '.length is 0');
       };
+
       writer.onwriteend = function() {
         ok(true, 'onwriteend fired');
         equal(this.position, BLOB_DATA.length, '.position is correct after write');
         equal(this.length, BLOB_DATA.length, '.length is correct after write');
-        fileEntry.remove(function() {
-          start();
+
+        fileEntry.file(function(file) {
+          equal(file.type, MIMETYPE, 'file.type initially blank');
+          equal(file.size, writer.length, 'file.size == writer.length');
+          fileEntry.remove(function() {
+            start();
+          });
         });
       };
-      var bb = new BlobBuilder();
-      bb.append(BLOB_DATA);
-      writer.write(bb.getBlob());
+
+      fileEntry.file(function(file) {
+        equal(file.type, '', 'file.type initially blank');
+        equal(file.size, 0, 'file.size initially 0');
+        equal(file.name, FILE_NAME, 'filename == ' + FILE_NAME);
+
+        // Run the writes after this async function does its thing.
+        var bb = new BlobBuilder();
+        bb.append(BLOB_DATA);
+        writer.write(bb.getBlob(MIMETYPE));
+      });
     });
   }, onError);
 });
