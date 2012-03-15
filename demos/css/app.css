@@ -5,6 +5,9 @@ html, body {
   height: 100%;
   width: 100%;
   overflow: hidden;
+  box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
 }
 body {
   background: -moz-radial-gradient(center center, #fff, #eee) no-repeat;
@@ -88,4 +91,12 @@ a.delete {
 }
 a.playing {
   color: green;
+}
+#log {
+  border-top: 1px solid black;
+  font-family: "Courier New";
+  padding-top: 10px;
+}
+#log p {
+  margin: 0;
 }

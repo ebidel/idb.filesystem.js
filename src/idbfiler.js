@@ -27,6 +27,8 @@ if (exports.requestFileSystem || exports.webkitRequestFileSystem) {
 
 exports.indexedDB = exports.indexedDB || exports.mozIndexedDB ||
                     exports.msIndexedDB;
+exports.BlobBuilder = exports.BlobBuilder || exports.MozBlobBuilder ||
+                      exports.MSBlobBuilder;
 exports.TEMPORARY = 0;
 exports.PERSISTENT = 1;
 
@@ -41,13 +43,16 @@ FileError.INVALID_MODIFICATION_ERR = 9;
 FileError.NOT_FOUND_ERR  = 1;
 
 function MyFileError(obj) {
-  //this.prototype = FileError.prototype;
   this.code = obj.code;
   this.name = obj.name;
 }
 MyFileError.prototype = FileError.prototype;
 
-var NOT_IMPLEMENTED_ERR = new MyFileError({code: 1000, name: 'Not implemented'});
+var INVALID_MODIFICATION_ERR = new MyFileError({
+      code: FileError.INVALID_MODIFICATION_ERR,
+      name: 'INVALID_MODIFICATION_ERR'});
+var NOT_IMPLEMENTED_ERR = new MyFileError({code: 1000,
+                                           name: 'Not implemented'});
 var NOT_FOUND_ERR = new MyFileError({code: FileError.NOT_FOUND_ERR,
                                      name: 'Not found'});
 
@@ -57,7 +62,12 @@ idb.db = null;
 var FILE_STORE = 'entries';
 
 /**
- * Interface to wrap native File.
+ * Interface to wrap the native File interface.
+ *
+ * This interface is necessary for creating zero-length (empty) files,
+ * something the Filesystem API allows you to do. Unfortunately, File's
+ * constructor cannot be called directly, making it impossible to instantiate
+ * an empty File in JS.
  *
  * @param {Object} opts Initial values.
  * @constructor
@@ -69,11 +79,14 @@ function MyFile(opts) {
   this.size = opts.size || 0;
   this.name = opts.name || '';
   this.type = opts.type || '';
+  //this.slice = Blob.prototype.slice; // Doesn't work with structured clones.
 
   this.__defineGetter__('blob_', function() {
     return blob_;
   });
 
+  // Need some black magic to correct the object's size/name/type based on the
+  // blob that is saved.
   this.__defineSetter__('blob_', function(val) {
     blob_ = val;
     self.size = blob_.size;
@@ -82,7 +95,6 @@ function MyFile(opts) {
   });
 }
 MyFile.prototype.constructor = MyFile; 
-// TODO: figure out better way how to save slice method in structured clone.
 //MyFile.prototype.slice = Blob.prototype.slice;
 
 /**
@@ -108,24 +120,41 @@ function FileWriter(fileEntry) {
   });
 
   this.write = function(blob) {
+
+    if (!blob) {
+      throw Error('Expected blob argument to write.'); 
+      return;
+    }
+
     var self = this;
-    //fileEntry_.file_ = blob;
-    fileEntry_.file_.blob_ = blob;//fileEntry_.file_ = new MyFile(opts);
+
+    // Set the blob we're writing on this file entry so we can recall it later.
+    fileEntry_.file_.blob_ = blob;
+
+    // Call onwritestart if it was defined.
+    if (self.onwritestart) {
+      self.onwritestart();
+    }
+
+    // TODO: throw an error if onprogress, onwrite, onabort are defined.
+
     idb.put(fileEntry_, function(entry) {
       if (self.onwriteend) {
-        self.onwriteend(); // TOOD: send an event back here.
+        // Set writer.position/write.length to same.
+        position_ = entry.file_.size;
+        length_ = position_;
+        self.onwriteend();
       }
-    });
-    
+    }, this.onerror);
   };
 }
 
 FileWriter.prototype = {
   seek: function(offset) {
-    
+    throw NOT_IMPLEMENTED_ERR;
   },
   truncate: function(size) {
-    
+    throw NOT_IMPLEMENTED_ERR;
   }
 }
 
@@ -181,8 +210,7 @@ Entry.prototype = {
     }
     idb.delete(this.fullPath, function() {
       successCallback();
-    });
-    // TODO: call opt_errorCallback on error.
+    }, opt_errorCallback);
   },
   toURL: function() {
     throw NOT_IMPLEMENTED_ERR;
@@ -228,26 +256,33 @@ function FileEntry(opt_fileEntry) {
 FileEntry.prototype = new Entry();
 FileEntry.prototype.constructor = FileEntry; 
 FileEntry.prototype.createWriter = function(callback) {
-  // TODO: onwriteend, onwrite, onerror events
-  var fileWriter = new FileWriter(this);
-  callback(fileWriter);
+  // TODO: figure out if there's a way to dispatch onwrite event. Only call
+  // onwritend/onerror are called in FileEntry.write().
+  callback(new FileWriter(this));
 };
 FileEntry.prototype.file = function(successCallback, opt_errorCallback) {
   if (!successCallback) {
     throw Error('Expected successCallback argument.');
   }
+
   if (this.file_ == null) {
-    opt_errorCallback(NOT_FOUND_ERR);
+    if (opt_errorCallback) {
+      opt_errorCallback(NOT_FOUND_ERR);
+    } else {
+      throw NOT_FOUND_ERR;
+    }
     return;
   }
 
   // If we're returning a zero-length (empty) file, return the fake file obj.
   // Otherwise, return the native File object that we've stashed.
-  var val = this.file_.blob_ == null ? this.file_ : this.file_.blob_;
-  if (!val.slice) {
-    val.slice = Blob.prototype.slice; // Hack to add back in .slice();
-  }
-  successCallback(val);
+  var file = this.file_.blob_ == null ? this.file_ : this.file_.blob_;
+
+  // Add Blob.slice() to this wrapped object. Currently won't work :(
+  /*if (!val.slice) {
+    val.slice = Blob.prototype.slice; // Hack to add back in .slice().
+  }*/
+  successCallback(file);
 };
 
 /**
@@ -283,34 +318,33 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
       // getFile must fail.
       // TODO: call opt_errorCallback
     } else if (options.create === true && !fileEntry) {
-      // Full path should always lead with a slash and not end on one (directories).
-      var fullPath = path;
-      if (fullPath[0] != '/') {
-        fullPath = '/' + fullPath;
-      }
-      if (fullPath[fullPath.length - 1] == '/') {
-        fullPath = fullPath.substring(0, fullPath.length - 1);
-      }
+      path = fixFullPath_(path);
+
       // If create is true, the path doesn't exist, and no other error occurs,
       // getFile must create it as a zero-length file and return a corresponding
       // FileEntry.
       var fileEntry = new FileEntry();
-      fileEntry.name = fullPath.split('/').pop(); // Just need filename.
-      fileEntry.fullPath = fullPath; // TODO(ericbidelman): set this correctly
+      fileEntry.name = path.split('/').pop(); // Just need filename.
+      fileEntry.fullPath = path; // TODO(ericbidelman): set this correctly
       fileEntry.filesystem = fs_;
       fileEntry.file_ = new MyFile({size: 0, name: fileEntry.name}); // TODO: create a zero-length file and attach it (fileEntry.file_=file).
 
-      idb.put(fileEntry, successCallback);
+      idb.put(fileEntry, successCallback, opt_errorCallback);
 
     } else if (options.create === true && fileEntry) {
       // IDB won't save methods, so we need re-create the FileEntry.
       successCallback(new FileEntry(fileEntry));
-    } else if (options.create !== true && !fileEntry) {
+    } else if (options.create === false && !fileEntry) {
       // If create is not true and the path doesn't exist, getFile must fail.
       // TODO: call opt_errorCallback
-    } else if (options.create !== true && fileEntry && fileEntry.isDirectory) {
-      // If create is not true and the path exists, but is a directory,
-      // getFile must fail.
+      if (opt_errorCallback) {
+        opt_errorCallback(INVALID_MODIFICATION_ERR);
+        return;
+      }
+
+    } else if (options.create === false && fileEntry && fileEntry.isDirectory) {
+      // If create is not true and the path exists, but is a directory, getFile
+      // must fail.
       // TODO: call opt_errorCallback
     } else {
       // Otherwise, if no other error occurs, getFile must return a FileEntry
@@ -319,7 +353,7 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
       // IDB won't' save methods, so we need re-create the FileEntry.
       successCallback(new FileEntry(fileEntry));
     } 
-  });
+  }, opt_errorCallback);
 };
 
 DirectoryEntry.prototype.removeRecursively = function(successCallback,
@@ -330,8 +364,7 @@ DirectoryEntry.prototype.removeRecursively = function(successCallback,
 
   idb.drop(function(e) {
     successCallback();
-  });
-  //TODO: call opt_errorCallback if necessary.
+  }, opt_errorCallback);
 };
 
 /**
@@ -360,9 +393,7 @@ function DOMFileSystem(type, size) {
 function requestFileSystem(type, size, successCallback, opt_errorCallback) {
   if (type != exports.TEMPORARY && type != exports.PERSISTENT) {
     if (opt_errorCallback) {
-      var error = new MyFileError({code: FileError.INVALID_MODIFICATION_ERR,
-                                   name: 'INVALID_MODIFICATION_ERR'});
-      opt_errorCallback(error);
+      opt_errorCallback(INVALID_MODIFICATION_ERR);
       return;
     }
   }
@@ -370,7 +401,7 @@ function requestFileSystem(type, size, successCallback, opt_errorCallback) {
   fs_ = new DOMFileSystem(type, size);
   idb.open(fs_.name, function(e) {
     successCallback(fs_);
-  });
+  }, opt_errorCallback);
 }
 
 function resolveLocalFileSystemURL(url, callback, opt_errorCallback) {
@@ -380,9 +411,22 @@ function resolveLocalFileSystemURL(url, callback, opt_errorCallback) {
   }
 }
 
+// When saving an entry, the fullPath should always lead with a slash and never
+// end with one (e.g. a directory). This method ensures path is legit.
+function fixFullPath_(path) {
+  var fullPath = path;
+  if (fullPath[0] != '/') {
+    fullPath = '/' + fullPath;
+  }
+  if (fullPath[fullPath.length - 1] == '/') {
+    fullPath = fullPath.substring(0, fullPath.length - 1);
+  }
+  return fullPath;
+}
+
 // =============================================================================
 
-idb.open = function(dbName, successCallback) {
+idb.open = function(dbName, successCallback, opt_errorCallback) {
   var self = this;
 
 //console.log(dbName)
@@ -400,7 +444,7 @@ idb.open = function(dbName, successCallback) {
     }
   };
 
-  request.onerror = onError;
+  request.onerror = opt_errorCallback || onError;
 
   request.onupgradeneeded = function(e) {
     // First open was called or higher db version was used.
@@ -424,7 +468,7 @@ idb.open = function(dbName, successCallback) {
   return request;
 };
 
-idb.drop = function(successCallback) {
+idb.drop = function(successCallback, opt_errorCallback) {
   if (!this.db) {
     return;
   }
@@ -435,6 +479,7 @@ idb.drop = function(successCallback) {
   request.onsuccess = function(e) {
     successCallback(e);
   };
+  request.onerror = opt_errorCallback;
 
   this.db.close();
   this.db = null;
@@ -461,47 +506,49 @@ console.log('blocked');
   };*/
 };
 
-idb.get = function(fullPath, successCallback) {
+idb.get = function(fullPath, successCallback, opt_errorCallback) {
   if (!this.db) {
     return;
   }
 
   var tx = this.db.transaction([FILE_STORE], IDBTransaction.READ_ONLY);
-  tx.objectStore(FILE_STORE).get(fullPath).onsuccess = function(e) {
+
+  var request = tx.objectStore(FILE_STORE).get(fullPath);
+  request.onsuccess = function(e) {
     successCallback(e.target.result);
   };
+  request.onerror = opt_errorCallback;
 };
 
-idb.delete = function(fullPath, successCallback) {
+idb.delete = function(fullPath, successCallback, opt_errorCallback) {
   if (!this.db) {
     return;
   }
 
   var tx = this.db.transaction([FILE_STORE], IDBTransaction.READ_WRITE);
-  tx.objectStore(FILE_STORE).delete(fullPath).onsuccess = function(e) {
-    successCallback(e.target.result);
+
+  var request = tx.objectStore(FILE_STORE).delete(fullPath);
+  request.onsuccess = function(e) {
+    successCallback(/*e.target.result*/);
   };
+  request.onerror = opt_errorCallback;
 };
 
-idb.put = function(entry, successCallback) {
+idb.put = function(entry, successCallback, opt_errorCallback) {
   if (!this.db) {
     return;
   }
 
   var self = this;
 
-//console.log(entry)
-
   var tx = this.db.transaction([FILE_STORE], IDBTransaction.READ_WRITE);
 
   var request = tx.objectStore(FILE_STORE).put(entry, entry.fullPath);
   request.onsuccess = function(e) {
-    //self.getAllEntries();
-    successCallback(entry); // TODO: probably pass the event back instead?
+    // TODO: Error is thrown if we pass the request event back instead.
+    successCallback(entry);
   };
-  request.onerror = function(e) {
-    console.log(e.target);
-  };
+  request.onerror = opt_errorCallback;
 };
 
 idb.getAllEntries = function(successCallback, opt_errorCallback) {

@@ -39,10 +39,10 @@ function openFS() {
 
 function writeFile(file, i) {
   fs.root.getFile(file.name, {create: true}, function(fileEntry) {
-console.log(fileEntry)
     fileEntry.createWriter(function(fileWriter) {
-      fileWriter.onwriteend = function(e) {
-      	console.log('WRITE DONE');
+      fileWriter.onwriteend = function() {
+        // TODO
+        console.log(this)
       };
       fileWriter.write(file);
 	}, onError);
@@ -58,17 +58,38 @@ function getAllEntries() {
 		[].forEach.call(results, function(entry) {
   	  var li = document.createElement('li');
   	  if (entry.isFile) {
-  	    entry.file(function(f) {
-  	      if (f.type.match('audio/') || f.type.match('video/ogg')) {
-  	        var audio = new Audio();
+        var deleteLink = document.createElement('a');
+        deleteLink.href = '';
+        deleteLink.textContent = 'delete';
+        deleteLink.classList.add('delete');
+        deleteLink.onclick = function(e) {
+          entry.remove(function() {
+            var li = e.target.parentElement.parentElement;
+            li.parentElement.removeChild(li);
+            logger.log('<p>Removed ' + entry.name + '</p>');
+          });
+          return false;
+        };
 
-  	      	var size = Math.round(f.size * 100 / (1024 * 1024) / 100);
+  	    entry.file(function(f) {
+          var size = Math.round(f.size * 100 / (1024 * 1024)) / 100;
+
+          var span = document.createElement('span');
+          span.title = size + 'MB';
+
+          if (size < 1) {
+            size = Math.round(f.size * 100 / 1024) / 100;
+            span.title = size + 'KB';
+          }
+
+  	      if (f.type.match('audio/')) {// || f.type.match('video/ogg')) {
+
+            var audio = new Audio();
 
             if (audio.canPlayType(f.type)) {
             	audio.src = window.URL.createObjectURL(f);
   	      	  //audio.type = f.type;
   	      	  //audio.controls = true;
-  
   	      	  audio.onended = function(e) {
   	            window.URL.revokeObjectURL(this.src);
   	          };
@@ -76,50 +97,44 @@ function getAllEntries() {
   	      	  var a = document.createElement('a');
   	      	  a.href = '';
   	      	  a.textContent = entry.name;
-  	      	  a.title = size + 'MB';
   	      	  a.appendChild(audio);
-  	      	  a.onclick = function(e) {
-  	      	  	var audio = this.querySelector('audio');
-  	      	  	if (audio.paused) {
-  	      	      audio.play();
-                  this.classList.add('playing');
-	  	      	  } else {
-	  	      	    audio.pause();
-                  this.classList.remove('playing');
-	  	      	  }
-  	      	    e.preventDefault();
-  	      	  };
-  	      	  li.appendChild(a);
-	  	      } else {
-	  	        li.textContent = entry.name;
-	  	      }
+  	      	  a.onclick = playPauseAudio;
 
-	  	      var a = document.createElement('a');
-	  	      a.href = '';
-	  	      a.textContent = 'delete';
-	  	      a.classList.add('delete');
-	  	      a.onclick = function(e) {
-	  	      	entry.remove(function() {
-	  	      		var li = e.target.parentElement;
-	  	      	  li.parentElement.removeChild(li);
-	  	      		logger.log('<p>Removed ' + entry.name + '</p>');
-	  	      	});
-	  	      	return false;
-	  	      };
-	  	      li.appendChild(a);
+              span.appendChild(a);
+	  	      } else {
+              span.textContent = entry.name + " (can't play)";
+	  	      }
   	      } else {
-            li.textContent = entry.name;
+            span.textContent = entry.name;
           }
+
+          span.appendChild(deleteLink);
+          li.appendChild(span);
 	      }, onError);
   	  } else {
   	    console.log('got a directory')	
   	  }
   	  frag.appendChild(li);
   	});
+
   	var entries = document.querySelector('#entries');
   	entries.innerHTML = '<ul></ul>';
-  	entries.appendChild(frag);	
+  	entries.appendChild(frag);
+
   }, onError);
+}
+
+function playPauseAudio(e) {
+  var a = e.target;
+  var audio = a.querySelector('audio');
+  if (audio.paused) {
+    audio.play();
+    a.classList.add('playing');
+  } else {
+    audio.pause();
+    a.classList.remove('playing');
+  }
+  e.preventDefault();
 }
 
 window.addEventListener('DOMContentLoaded', function(e) {

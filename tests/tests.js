@@ -142,26 +142,44 @@ test('read directory', 2, function() {
   }, onError);
 });
 
-test('add to directory', 6, function() {
+test('getFile()', 2, function() {
   var fs = this.fs;
   var entry = fs.root;
-  var FILE_NAME = 'idb_test_file_name';
+  var FILE_NAME = 'idb_test_file_name' + Date.now();
+
+  stop();
+  entry.getFile(FILE_NAME, {create: false}, function(fileEntry) {
+    ok(false, 'file existed');
+    start();
+  }, function(e) {
+    ok(true, "{create: false} and file didn't exist");
+    start();
+  });
+
+  var FILE_NAME2 = FILE_NAME + '_2';
+  stop();
+  entry.getFile(FILE_NAME2, {create: true}, function(fileEntry) {
+    entry.getFile(fileEntry.fullPath, {create: false}, function(fileEntry2) {
+      ok(true, fileEntry2.name + ' existed after creating it.');
+      fileEntry2.remove(function() {
+        start();
+      });
+    }, onError);
+  }, onError);
+});
+
+test('add/remove to directory', 4, function() {
+  var fs = this.fs;
+  var entry = fs.root;
+  var FILE_NAME = 'idb_test_file_name' + Date.now();
 
   stop();
   entry.getFile(FILE_NAME, {create: true}, function(fileEntry) {
-  console.log()
     ok(fileEntry.__proto__ === FileEntry.prototype, 'created file is a FileEntry');
     equal(fileEntry.isFile, true, '.isFile == true');
     equal(fileEntry.fullPath, '/' + FILE_NAME, "fullPath is correct");
     equal(fileEntry.name, FILE_NAME, "filename matches one set");
-    fileEntry.file(function(file) {
-      equal(file.size, 0, 'empty file.size == 0');
-      equal(file.type, '', "empty file has type==''");
-      fileEntry.remove(function() {
-        start();
-      });
-    }, function(e) {
-      ok(false, 'created file should exist.');
+    fileEntry.remove(function() {
       start();
     });
   }, onError);
@@ -192,4 +210,93 @@ test('verify properties/methods exist', 6, function() {
   ok(typeof fileEntry.file == 'function', 'FileEntry.file() defined');
   equal(fileEntry.isFile, true, 'FileEntry.isFile == false');
   equal(fileEntry.isDirectory, false, 'FileEntry.isDirectory == true');
+});
+
+test('file()', 4, function() {
+  var fs = this.fs;
+  var entry = fs.root;
+  var FILE_NAME = 'idb_test_file_name' + Date.now();
+
+  try {
+    var fileEntry = new FileEntry();
+    fileEntry.file();
+  } catch(e) {
+    ok(true, 'success callback required.');
+  }
+
+  try {
+    var fileEntry = new FileEntry();
+    fileEntry.file(function(file) {
+      ok(false);
+    });
+  } catch(e) {
+    ok(true, 'FileEntry.file() threw NOT_FOUND_ERROR');
+  }
+
+  stop();
+  entry.getFile(FILE_NAME, {create: true}, function(fileEntry) {
+    fileEntry.file(function(file) {
+      equal(file.size, 0, 'empty file.size == 0');
+      equal(file.type, '', "empty file has type==''");
+      fileEntry.remove(function() {
+        start();
+      });
+    }, function(e) {
+      ok(false, 'NOT_FOUND_ERROR');
+      start();
+    });
+  }, onError);
+});
+
+test('FileWriter', 11, function() {
+  var fs = this.fs;
+  var entry = fs.root;
+  var FILE_NAME = 'idb_test_file_name_writer' + Date.now();
+  var BLOB_DATA = '123';
+
+  // FileWriter shouldn't be an accessible constructor.
+  ok(window.FileWriter === undefined, 'window.FileWriter is undefined');
+
+  var fileEntry = new FileEntry();
+  stop();
+  fileEntry.createWriter(function(writer) {
+    equal(writer.position, 0, 'writer.position is 0');
+    equal(writer.length, 0, 'writer.length is 0');
+    start();
+  });
+
+  var fileEntry2 = new FileEntry();
+  stop();
+  fileEntry2.createWriter(function(writer) {
+    try {
+      writer.write();
+      start();
+    } catch(e) {
+      ok(true, 'Exception thrown for missing blob argument.');
+      start();
+    }
+  });
+
+  stop();
+  entry.getFile(FILE_NAME, {create: true}, function(fileEntry) {
+    fileEntry.createWriter(function(writer) {
+      writer.onwritestart = function() {
+        ok(true, 'onwritestart fired');
+        ok(this === writer, 'this is writer object');
+        equal(this.position, 0, '.position is 0');
+        equal(this.length, 0, '.length is 0');
+      };
+      writer.onwriteend = function() {
+        ok(true, 'onwriteend fired');
+        equal(this.position, BLOB_DATA.length, '.position is correct after write');
+        equal(this.length, BLOB_DATA.length, '.length is correct after write');
+        fileEntry.remove(function() {
+          start();
+        });
+      };
+      var bb = new BlobBuilder();
+      bb.append(BLOB_DATA);
+      writer.write(bb.getBlob());
+    });
+  }, onError);
 });
