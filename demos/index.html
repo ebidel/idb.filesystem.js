@@ -21,21 +21,25 @@ Author: Eric Bidelman (ebidel@gmail.com)
 <meta charset="utf-8" />
 <meta http-equiv="X-UA-Compatible" content="chrome=1" />
 <title>HTML5 Filesystem Playground</title>
-<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Open+Sans" type="text/css" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Karla" type="text/css" />
 <link rel="stylesheet" href="css/app.css" type="text/css" />
 <link rel="shortcut icon" href="images/icons/favicon.png" />
 </head>
 <body>
 
-<button id="openFSButton" onclick="openFS();">Open</button>
-<button onclick="clearFS();">Drop</button>
-<button onclick="getAllEntries();">List</button>
+<section>
+	<button id="openFSButton" onclick="openFS();">Open</button>
+	<button onclick="clearFS();">Drop</button>
+	<button onclick="getAllEntries();">List</button>
+</section>
+<section>
+  <div id="entries"></div>
+</section>
+<section>
+  <div id="log"></div>
+</section>
 
-<div id="entries"></div>
-
-<div id="log"></div>
-
-<script src="../src/idbfiler.js" defer></script>
+<script src="../src/idb.filer.js" defer></script>
 <script src="js/logger.js" defer></script>
 <script src="js/dnd.js" defer></script>
 <script src="js/app.js"defer></script>

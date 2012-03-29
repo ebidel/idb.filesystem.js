@@ -168,7 +168,7 @@ test('getFile()', 2, function() {
   }, onError);
 });
 
-test('add/remove to directory', 4, function() {
+test('add/remove file in directory', 4, function() {
   var fs = this.fs;
   var entry = fs.root;
   var FILE_NAME = 'idb_test_file_name' + Date.now();
@@ -184,6 +184,34 @@ test('add/remove to directory', 4, function() {
     });
   }, onError);
 });
+
+test('getDirectory()', 5, function() {
+  var fs = this.fs;
+  var entry = fs.root;
+  var FOLDER_NAME = 'idb_test_folder_name' + Date.now();
+
+  stop();
+  entry.getDirectory(FOLDER_NAME, {create: false}, function(folderEntry) {
+    ok(false, 'folder existed');
+    start();
+  }, function(e) {
+    ok(true, "{create: false} and folder didn't exist");
+    start();
+  });
+
+  var FOLDER_NAME2 = FOLDER_NAME + '_2';
+  stop();
+  entry.getDirectory(FOLDER_NAME2, {create: true}, function(folderEntry) {
+    ok(folderEntry.__proto__ === DirectoryEntry.prototype, 'created entry is a DirectoryEntry');
+    equal(folderEntry.isDirectory, true, '.isDirectory == true');
+    equal(folderEntry.fullPath, '/' + FOLDER_NAME2, "fullPath is correct");
+    equal(folderEntry.name, FOLDER_NAME2, "folder name matches one that was set");
+    folderEntry.remove(function() {
+      start();
+    });
+  }, onError);
+});
+
 
 module('FileEntry', {
   setup: function() {

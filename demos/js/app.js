@@ -59,24 +59,30 @@ function getAllEntries() {
 		// Native readEntries() returns an EntryArray, which doesn't have forEach.
 		[].forEach.call(results, function(entry) {
   	  var li = document.createElement('li');
+      li.dataset.type = entry.isFile ? 'file' : 'folder';
+      
+      var deleteLink = document.createElement('a');
+      deleteLink.href = '';
+      deleteLink.innerHTML = '<img src="images/icons/delete.svg" alt="Delete this" title="Delete this">';
+      deleteLink.classList.add('delete');
+      deleteLink.onclick = function(e) {
+        e.preventDefault();
+
+        entry.remove(function() {
+          var li = e.target.parentElement.parentElement.parentElement;
+          li.parentElement.removeChild(li);
+          logger.log('<p>Removed ' + entry.name + '</p>');
+        });
+        return false;
+      };
+
+      var span = document.createElement('span');
+      span.appendChild(deleteLink);
+
   	  if (entry.isFile) {
-        var deleteLink = document.createElement('a');
-        deleteLink.href = '';
-        deleteLink.textContent = 'delete';
-        deleteLink.classList.add('delete');
-        deleteLink.onclick = function(e) {
-          entry.remove(function() {
-            var li = e.target.parentElement.parentElement;
-            li.parentElement.removeChild(li);
-            logger.log('<p>Removed ' + entry.name + '</p>');
-          });
-          return false;
-        };
 
   	    entry.file(function(f) {
           var size = Math.round(f.size * 100 / (1024 * 1024)) / 100;
-
-          var span = document.createElement('span');
           span.title = size + 'MB';
 
           if (size < 1) {
@@ -98,23 +104,34 @@ function getAllEntries() {
 
   	      	  var a = document.createElement('a');
   	      	  a.href = '';
-  	      	  a.textContent = entry.name;
+              a.dataset.fullPath = entry.fullPath;
+  	      	  a.textContent = entry.fullPath;
   	      	  a.appendChild(audio);
   	      	  a.onclick = playPauseAudio;
 
               span.appendChild(a);
 	  	      } else {
-              span.textContent = entry.name + " (can't play)";
+              span.appendChild(document.createTextNode(entry.fullPath + " (can't play)"));
 	  	      }
   	      } else {
-            span.textContent = entry.name;
+            span.appendChild(document.createTextNode(entry.fullPath));
           }
 
-          span.appendChild(deleteLink);
           li.appendChild(span);
 	      }, onError);
   	  } else {
-  	    console.log('got a directory')	
+        var span2 = document.createElement('span');
+        span2.textContent = entry.fullPath;
+  	    span.appendChild(span2);
+        span.classList.add('bold');
+        var img = document.createElement('img');
+        img.src = 'images/icons/folder.png';
+        img.alt = 'This item is a folder';
+        img.title = img.alt;
+        span.title = img.alt;
+        span.appendChild(img);
+
+        li.appendChild(span);
   	  }
   	  frag.appendChild(li);
   	});
