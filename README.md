@@ -1,7 +1,7 @@
-idbfiler.js
+idb.filer.js
 ===========
 
-idbfiler.js is JavaScript library (polyfill) implementation of the HTML5 [Filesystem API][1].
+idb.filer.js is JavaScript library (polyfill) implementation of the HTML5 [Filesystem API][1].
 It is intended for browsers that do not support the API natively.
 
 The library works by using [IndexedDB][2] as its underlying storage layer. Essentially,
