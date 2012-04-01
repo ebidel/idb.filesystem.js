@@ -1,20 +1,29 @@
-/*
-Copyright 2012 - Eric Bidelman
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-Author: Eric Bidelman (ebidel@gmail.com)
-*/
+/** 
+ * Copyright 2012 - Eric Bidelman
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ 
+ * @fileoverview
+ * This interface implements the HTML5 Filesystem API as a polyfill on top of
+ * an IndexedDB storage layer. Files and folders are stored as FileEntry and
+ * FolderEntry objects in a single object store. IDBKeyRanges are used to query
+ * into a folder. The reason a single object store works is because we can
+ * utilize the properties of ASCII. Namely, ASCII / is followed by ASCII 0,
+ * so something like  "/one/two/" comes before "/one/two/ANYTHING" comes
+ * before "/one/two/0".
+ * 
+ * @author Eric Bidelman (ebidel@gmail.com)
+ */
 
 'use strict';
 
@@ -64,10 +73,15 @@ var FILE_STORE = 'entries';
 
 // When saving an entry, the fullPath should always lead with a slash and never
 // end with one (e.g. a directory). This method ensures path is legit.
-function fixFullPath_(path) {
+function fixFullPath_(cwdFullPath, path) {
   var fullPath = path;
   if (fullPath[0] != '/') {
-    fullPath = '/' + fullPath;
+    fullPath = cwdFullPath;
+    if (cwdFullPath.length > 1) {
+      fullPath += '/' + path;
+    } else {
+      fullPath += path;
+    }
   }
   if (fullPath[fullPath.length - 1] == '/') {
     fullPath = fullPath.substring(0, fullPath.length - 1);
@@ -334,10 +348,8 @@ DirectoryEntry.prototype.createReader = function() {
 };
 DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
                                                  opt_errorCallback) {
-  // Create an absolute path if we were handed a relative on.
-  if (path[0] != '/') {
-    path = this.fullPath + path
-  }
+  // Create an absolute path if we were handed a relative one.
+  path = fixFullPath_(this.fullPath, path);
 
   idb.get(path, function(folderEntry) {
     if (options.create === true && options.exclusive === true && folderEntry) {
@@ -348,7 +360,6 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
         return;
       }
     } else if (options.create === true && !folderEntry) {
-      path = fixFullPath_(path);
       // If create is true, the path doesn't exist, and no other error occurs,
       // getDirectory must create it as a zero-length file and return a corresponding
       // DirectoryEntry.
@@ -397,10 +408,8 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
 DirectoryEntry.prototype.getFile = function(path, options, successCallback,
                                             opt_errorCallback) {
 
-  // Create an absolute path if we were handed a relative on.
-  if (path[0] != '/') {
-    path = this.fullPath + path
-  }
+  // Create an absolute path if we were handed a relative one.
+  path = fixFullPath_(this.fullPath, path);
 
   idb.get(path, function(fileEntry) {
     if (options.create === true && options.exclusive === true && fileEntry) {
@@ -412,14 +421,12 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
         return;
       }
     } else if (options.create === true && !fileEntry) {
-      path = fixFullPath_(path);
-
       // If create is true, the path doesn't exist, and no other error occurs,
       // getFile must create it as a zero-length file and return a corresponding
       // FileEntry.
       var fileEntry = new FileEntry();
       fileEntry.name = path.split('/').pop(); // Just need filename.
-      fileEntry.fullPath = path; // TODO(ericbidelman): set this correctly
+      fileEntry.fullPath = path;
       fileEntry.filesystem = fs_;
       fileEntry.file_ = new MyFile({size: 0, name: fileEntry.name}); // TODO: create a zero-length file and attach it (fileEntry.file_=file).
 
@@ -625,18 +632,46 @@ idb.getAllEntries = function(fullPath, successCallback, opt_errorCallback) {
 
   var results = [];
 
-  //var range = IDBKeyRange.lowerBound(fullPath, false);
+  //var range = IDBKeyRange.lowerBound(fullPath, true);
+  //var range = IDBKeyRange.upperBound(fullPath, true);
 
-  var request = tx.objectStore(FILE_STORE).openCursor();//range);
+  // Treat the root entry special. Querying it returns all entries because
+  // they match '/'.
+  var range = null;
+  if (fullPath != '/') {
+//console.log(fullPath + '/', fullPath + '0')
+    range = IDBKeyRange.bound(fullPath + '/', fullPath + '0', false, false);
+  }
+
+  var request = tx.objectStore(FILE_STORE).openCursor(range);
 
   request.onsuccess = function(e) {
     var cursor = e.target.result;
     if (cursor) {
       var val = cursor.value;
-      // IDB wont' save methods, so we need re-create entry.
+
       results.push(val.isFile ? new FileEntry(val) : new DirectoryEntry(val));
       cursor.continue();
+
     } else {
+      // TODO: figure out how to do be range queries instead of filtering result
+      // in memory :(
+      results = results.filter(function(val) {
+        var valPartsLen = val.fullPath.split('/').length;
+        var fullPathPartsLen = fullPath.split('/').length;
+        
+        if (fullPath == '/' && valPartsLen < fullPathPartsLen + 1) {
+          // Hack to filter out entries in the root folder. This is inefficient
+          // because reading the entires of fs.root (e.g. '/') returns ALL
+          // results in the database, then filters out the entries not in '/'.
+          return val;
+        } else if (fullPath != '/' && valPartsLen == fullPathPartsLen + 1) {
+          // If this a subfolder and entry is a direct child, include it in
+          // the results. Otherwise, it's not an entry of this folder.
+          return val;
+        }
+      });
+
       successCallback(results);
     }
   };

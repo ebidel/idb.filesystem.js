@@ -34,7 +34,7 @@ function openFS() {
     cwd = fs.root;
   	openFSButton.disabled = true;
   	logger.log('<p>Opened <em>' + fs.name, + '</em></p>');
-  	getAllEntries();
+  	getAllEntries(fs.root);
   }, function(e) {
   	logger.log(e);
   });
@@ -52,17 +52,16 @@ function writeFile(file, i) {
       fileWriter.write(file);
 	  }, onError);
 
-    getAllEntries();
+    getAllEntries(cwd);
   }, onError);
 }
 
-function getAllEntries() {
-	cwd.createReader().readEntries(function(results) {
-
+function getAllEntries(dirEntry) {
+	dirEntry.createReader().readEntries(function(results) {
     html = [];
-    var paths = results.map(function(el) { return el.fullPath.substring(1); });
-    renderFromPathObj(buildFromPathList(paths));
-    document.querySelector('#entries2').innerHTML = html.join('');
+    // var paths = results.map(function(el) { return el.fullPath.substring(1); });
+    // renderFromPathObj(buildFromPathList(paths));
+    // document.querySelector('#entries2').innerHTML = html.join('');
 
 		var frag = document.createDocumentFragment();
 		// Native readEntries() returns an EntryArray, which doesn't have forEach.
@@ -81,7 +80,7 @@ function getAllEntries() {
           //var li = e.target.parentElement.parentElement.parentElement;
           //li.parentElement.removeChild(li);
           logger.log('<p>Removed ' + entry.name + '</p>');
-          getAllEntries();
+          getAllEntries(window.cwd);
         });
         return false;
       };
@@ -127,17 +126,30 @@ function getAllEntries() {
             span.appendChild(document.createTextNode(entry.fullPath));
           }
 
-          /*var img = document.createElement('img');
+          var img = document.createElement('img');
           img.src = 'images/icons/file.png';
           img.title = 'This item is a file';
           img.alt = img.title;
-          span.appendChild(img);*/
+          span.appendChild(img);
 
           li.appendChild(span);
 	      }, onError);
   	  } else {
         var span2 = document.createElement('span');
-        span2.textContent = entry.fullPath;
+
+        var folderLink = document.createElement('a');
+        folderLink.textContent = entry.fullPath;
+        folderLink.href = '';
+        folderLink.onclick = function(e) {
+          e.preventDefault();
+          cwd.getDirectory(this.textContent, {}, function(dirEntry) {
+            window.cwd = dirEntry; // TODO: not sure why we need to use window.cwd here.
+            getAllEntries(dirEntry);
+          }, onError);
+          return false;
+        };
+
+        span2.appendChild(folderLink);
   	    span.appendChild(span2);
         span.classList.add('bold');
         var img = document.createElement('img');
@@ -160,9 +172,9 @@ function getAllEntries() {
 }
 
 function mkdir(folderName) {
-  cwd.getDirectory(cwd.fullPath + folderName, {create: true, exclusive: true}, function(dirEntry) {
+  cwd.getDirectory(folderName, {create: true, exclusive: true}, function(dirEntry) {
     logger.log('<p>Created folder <em>' + dirEntry.fullPath, + '</em></p>');
-    getAllEntries();
+    getAllEntries(cwd);
   }, onError);
 }
 

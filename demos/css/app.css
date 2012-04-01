@@ -101,6 +101,16 @@ header {
   margin-bottom: 1em;
   padding-bottom: 10px;
 }
+input {
+  border-radius: 3px;
+  border: 1px solid #ccc;
+  padding: 6px;
+  background: -webkit-linear-gradient(white 60%, #eee);
+  background: -moz-linear-gradient(white 60%, #eee);
+  background: -o-linear-gradient(white 65%, #eee);
+  background: -ms-linear-gradient(white 60%, #eee);
+  background: linear-gradient(white 60%, #eee);
+}
 #entries {
   display: inline-block;
 }
