@@ -96,14 +96,21 @@ ul, li {
 .bold {
   font-weight: bold;
 }
+header {
+  border-bottom: 1px solid #eee;
+  margin-bottom: 1em;
+  padding-bottom: 10px;
+}
 #entries {
-  margin: 1em 0;
   display: inline-block;
 }
 #entries li {
   padding: 3px 7px 3px 3px;
 }
-#entries li[data-type="folder"] span > img {
+/*#entries li[data-type="folder"] {
+  margin-left: -15px;
+}*/
+#entries li span > img {
   height: 20px;
   vertical-align: middle;
   margin-left: 10px;
@@ -136,11 +143,20 @@ a.delete img {
 a.playing {
   color: #33ccff;
 }
+.panel {
+  float: left;
+}
 #log {
-  border-top: 1px solid #eee;
   font-family: "Courier New";
-  padding-top: 10px;
+  margin-left: 1em;
 }
 #log p {
   margin: 0;
+}
+#entries2 {
+  margin-top: 1em;
+  font-size: 80%;
+}
+#entries2 li {
+  padding-left: 1em;
 }

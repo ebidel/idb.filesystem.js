@@ -8,9 +8,11 @@ var openFSButton = document.querySelector('#openFSButton');
 
 var logger = new Logger('#log');
 var fs = null;
+var cwd = null;
+var html = [];
 
 function onError(e) {
-  console.log('Error - ', e);
+  logger.log('Error ' + e.code + ' - ' + e.name);
 }
 
 function clearFS() {
@@ -29,6 +31,7 @@ function clearFS() {
 function openFS() {
   window.requestFileSystem(TEMPORARY, 1024*1024, function(myFs) {
   	fs = myFs;
+    cwd = fs.root;
   	openFSButton.disabled = true;
   	logger.log('<p>Opened <em>' + fs.name, + '</em></p>');
   	getAllEntries();
@@ -38,7 +41,7 @@ function openFS() {
 }
 
 function writeFile(file, i) {
-  fs.root.getFile(file.name, {create: true}, function(fileEntry) {
+  cwd.getFile(file.name, {create: true, exclusive: true}, function(fileEntry) {
     fileEntry.createWriter(function(fileWriter) {
       fileWriter.onwritestart = function() {
         console.log('WRITE START');
@@ -47,14 +50,20 @@ function writeFile(file, i) {
         console.log('WRITE END');
       };
       fileWriter.write(file);
-	}, onError);
+	  }, onError);
 
     getAllEntries();
   }, onError);
 }
 
 function getAllEntries() {
-	fs.root.createReader().readEntries(function(results) {
+	cwd.createReader().readEntries(function(results) {
+
+    html = [];
+    var paths = results.map(function(el) { return el.fullPath.substring(1); });
+    renderFromPathObj(buildFromPathList(paths));
+    document.querySelector('#entries2').innerHTML = html.join('');
+
 		var frag = document.createDocumentFragment();
 		// Native readEntries() returns an EntryArray, which doesn't have forEach.
 		[].forEach.call(results, function(entry) {
@@ -69,9 +78,10 @@ function getAllEntries() {
         e.preventDefault();
 
         entry.remove(function() {
-          var li = e.target.parentElement.parentElement.parentElement;
-          li.parentElement.removeChild(li);
+          //var li = e.target.parentElement.parentElement.parentElement;
+          //li.parentElement.removeChild(li);
           logger.log('<p>Removed ' + entry.name + '</p>');
+          getAllEntries();
         });
         return false;
       };
@@ -117,6 +127,12 @@ function getAllEntries() {
             span.appendChild(document.createTextNode(entry.fullPath));
           }
 
+          /*var img = document.createElement('img');
+          img.src = 'images/icons/file.png';
+          img.title = 'This item is a file';
+          img.alt = img.title;
+          span.appendChild(img);*/
+
           li.appendChild(span);
 	      }, onError);
   	  } else {
@@ -141,6 +157,41 @@ function getAllEntries() {
   	entries.appendChild(frag);
 
   }, onError);
+}
+
+function mkdir(folderName) {
+  cwd.getDirectory(cwd.fullPath + folderName, {create: true, exclusive: true}, function(dirEntry) {
+    logger.log('<p>Created folder <em>' + dirEntry.fullPath, + '</em></p>');
+    getAllEntries();
+  }, onError);
+}
+
+function buildFromPathList(paths) {
+  var tree = {};
+  for (var i = 0, path; path = paths[i]; ++i) {
+    var pathParts = path.split('/');
+    var subObj = tree;
+    for (var j = 0, folderName; folderName = pathParts[j]; ++j) {
+      if (!subObj[folderName]) {
+        subObj[folderName] = j < pathParts.length - 1 ? {} : null;
+      }
+      subObj = subObj[folderName];
+    }
+  }
+  return tree;
+}
+
+function renderFromPathObj(object) {
+  for (var folder in object) {
+    if (!object[folder]) { // file's will have a null value
+      html.push('<li>', folder, '</li>');
+    } else {
+      html.push('<li>', folder);
+      html.push('<ul>');
+      renderFromPathObj(object[folder]);
+      html.push('</ul>');
+    }
+  }
 }
 
 function playPauseAudio(e) {

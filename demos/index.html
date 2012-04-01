@@ -20,22 +20,28 @@ Author: Eric Bidelman (ebidel@gmail.com)
 <head>
 <meta charset="utf-8" />
 <meta http-equiv="X-UA-Compatible" content="chrome=1" />
-<title>HTML5 Filesystem Playground</title>
+<title>HTML5 IndexeDB Filesystem</title>
 <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Karla" type="text/css" />
 <link rel="stylesheet" href="css/app.css" type="text/css" />
 <link rel="shortcut icon" href="images/icons/favicon.png" />
 </head>
 <body>
 
-<section>
-	<button id="openFSButton" onclick="openFS();">Open</button>
-	<button onclick="clearFS();">Drop</button>
-	<button onclick="getAllEntries();">List</button>
-</section>
-<section>
-  <div id="entries"></div>
-</section>
-<section>
+<header>
+  <button id="openFSButton" onclick="openFS();">Open</button>
+  <button onclick="clearFS();">Drop</button>
+  <button onclick="getAllEntries();">List</button>
+  <button onclick="mkdir(this.nextSibling.value);">Create</button><input type="text" placeholder="Folder name">
+</header>
+<div class="panel">
+  <section>
+    <div id="entries"></div>
+  </section>
+  <section>
+    <ul id="entries2"></ul>
+  </section>
+</div>
+<section class="panel">
   <div id="log"></div>
 </section>
 

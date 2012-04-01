@@ -179,15 +179,15 @@ FileWriter.prototype = {
  *
  * @constructor
  */
-function DirectoryReader() {}
+function DirectoryReader(dirEntry) {
+  var dirEntry_ = dirEntry;
 
-DirectoryReader.prototype = {
-  readEntries: function(successCallback, opt_errorCallback) {
+  this.readEntries = function(successCallback, opt_errorCallback) {
     if (!successCallback) {
       throw Error('Expected successCallback argument.');
     }
-    idb.getAllEntries(successCallback, opt_errorCallback);
-  }
+    idb.getAllEntries(dirEntry_.fullPath, successCallback, opt_errorCallback);
+  };
 };
 
 /**
@@ -330,18 +330,25 @@ function DirectoryEntry(opt_folderEntry) {
 DirectoryEntry.prototype = new Entry();
 DirectoryEntry.prototype.constructor = DirectoryEntry; 
 DirectoryEntry.prototype.createReader = function() {
-  return new DirectoryReader();
+  return new DirectoryReader(this);
 };
 DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
                                                  opt_errorCallback) {
+  // Create an absolute path if we were handed a relative on.
+  if (path[0] != '/') {
+    path = this.fullPath + path
+  }
+
   idb.get(path, function(folderEntry) {
     if (options.create === true && options.exclusive === true && folderEntry) {
       // If create and exclusive are both true, and the path already exists,
       // getDirectory must fail.
-      // TODO: call opt_errorCallback
+      if (opt_errorCallback) {
+        opt_errorCallback(INVALID_MODIFICATION_ERR);
+        return;
+      }
     } else if (options.create === true && !folderEntry) {
       path = fixFullPath_(path);
-
       // If create is true, the path doesn't exist, and no other error occurs,
       // getDirectory must create it as a zero-length file and return a corresponding
       // DirectoryEntry.
@@ -352,22 +359,31 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
       //dirEntry.file_ = new MyFile({size: 0, name: fileEntry.name}); // TODO: create a zero-length file and attach it (fileEntry.file_=file).
 
       idb.put(dirEntry, successCallback, opt_errorCallback);
-
     } else if (options.create === true && folderEntry) {
-      // IDB won't save methods, so we need re-create the DirectoryEntry.
-      successCallback(new DirectoryEntry(folderEntry));
-    } else if (options.create === false && !folderEntry) {
+
+      if (folderEntry.isDirectory) {
+        // IDB won't save methods, so we need re-create the DirectoryEntry.
+        successCallback(new DirectoryEntry(folderEntry));
+      } else {
+        if (opt_errorCallback) {
+          opt_errorCallback(INVALID_MODIFICATION_ERR);
+          return;
+        }
+      }
+    } else if ((!options.create || options.create === false) && !folderEntry) {
       // If create is not true and the path doesn't exist, getDirectory must fail.
-      // TODO: call opt_errorCallback
       if (opt_errorCallback) {
         opt_errorCallback(INVALID_MODIFICATION_ERR);
         return;
       }
-
-    } else if (options.create === false && folderEntry && folderEntry.isFile) {
+    } else if ((!options.create || options.create === false) && folderEntry &&
+               folderEntry.isFile) {
       // If create is not true and the path exists, but is a file, getDirectory
       // must fail.
-      // TODO: call opt_errorCallback
+      if (opt_errorCallback) {
+        opt_errorCallback(INVALID_MODIFICATION_ERR);
+        return;
+      }
     } else {
       // Otherwise, if no other error occurs, getDirectory must return a
       // DirectoryEntry corresponding to path.
@@ -380,11 +396,21 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
 
 DirectoryEntry.prototype.getFile = function(path, options, successCallback,
                                             opt_errorCallback) {
+
+  // Create an absolute path if we were handed a relative on.
+  if (path[0] != '/') {
+    path = this.fullPath + path
+  }
+
   idb.get(path, function(fileEntry) {
     if (options.create === true && options.exclusive === true && fileEntry) {
       // If create and exclusive are both true, and the path already exists,
       // getFile must fail.
-      // TODO: call opt_errorCallback
+
+      if (opt_errorCallback) {
+        opt_errorCallback(INVALID_MODIFICATION_ERR);
+        return;
+      }
     } else if (options.create === true && !fileEntry) {
       path = fixFullPath_(path);
 
@@ -400,20 +426,29 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
       idb.put(fileEntry, successCallback, opt_errorCallback);
 
     } else if (options.create === true && fileEntry) {
-      // IDB won't save methods, so we need re-create the FileEntry.
-      successCallback(new FileEntry(fileEntry));
-    } else if (options.create === false && !fileEntry) {
+      if (fileEntry.isFile) {
+        // IDB won't save methods, so we need re-create the FileEntry.
+        successCallback(new FileEntry(fileEntry));
+      } else {
+        if (opt_errorCallback) {
+          opt_errorCallback(INVALID_MODIFICATION_ERR);
+          return;
+        }
+      }
+    } else if ((!options.create || options.create === false) && !fileEntry) {
       // If create is not true and the path doesn't exist, getFile must fail.
-      // TODO: call opt_errorCallback
       if (opt_errorCallback) {
         opt_errorCallback(INVALID_MODIFICATION_ERR);
         return;
       }
-
-    } else if (options.create === false && fileEntry && fileEntry.isDirectory) {
+    } else if ((!options.create || options.create === false) && fileEntry &&
+               fileEntry.isDirectory) {
       // If create is not true and the path exists, but is a directory, getFile
       // must fail.
-      // TODO: call opt_errorCallback
+      if (opt_errorCallback) {
+        opt_errorCallback(INVALID_MODIFICATION_ERR);
+        return;
+      }
     } else {
       // Otherwise, if no other error occurs, getFile must return a FileEntry
       // corresponding to path.
@@ -520,31 +555,31 @@ idb.close = function() {
   this.db = null;
 };
 
-// For creating new folders.
-// Current hella broken.
-idb.addNewObjectStore = function(objectStoreName, opt_errorCallback) {
-  var dbVersion = this.db.version;
+// // For creating new folders.
+// // Current hella broken.
+// idb.addNewObjectStore = function(objectStoreName, opt_errorCallback) {
+//   var dbVersion = this.db.version;
 
-  // Object stores can only be created in versionchange transactions. To make
-  // that happen, we need to reopen the db and create an new obj store there.
-  this.close();
+//   // Object stores can only be created in versionchange transactions. To make
+//   // that happen, we need to reopen the db and create an new obj store there.
+//   this.close();
 
-  var self = this;
+//   var self = this;
 
-  // TODO: Don't reuse this code from idb.open().
-  var request = exports.indexedDB.open(fs_.name.replace(':', '_'), ++dbVersion);
-  request.onsuccess = function(e) {
-console.log(e.target.result)
-  };
-  request.onupgradeneeded = function(e) {
-console.log(e.target.result)
-    self.db = e.target.result;
-    self.db.onerror = onError;
-    if (!self.db.objectStoreNames.contains(objectStoreName)) {
-      var store = self.db.createObjectStore(objectStoreName);//, {keyPath: 'id', autoIncrement: true});
-    }
-  };
-};
+//   // TODO: Don't reuse this code from idb.open().
+//   var request = exports.indexedDB.open(fs_.name.replace(':', '_'), ++dbVersion);
+//   request.onsuccess = function(e) {
+// console.log(e.target.result)
+//   };
+//   request.onupgradeneeded = function(e) {
+// console.log(e.target.result)
+//     self.db = e.target.result;
+//     self.db.onerror = onError;
+//     if (!self.db.objectStoreNames.contains(objectStoreName)) {
+//       var store = self.db.createObjectStore(objectStoreName);//, {keyPath: 'id', autoIncrement: true});
+//     }
+//   };
+// };
 
 // TODO: figure out if we should ever call this method. The filesystem API
 // doesn't allow you to delete a filesystem once it is 'created'. Users should
@@ -572,9 +607,38 @@ idb.get = function(fullPath, successCallback, opt_errorCallback) {
 
   var tx = this.db.transaction([FILE_STORE], IDBTransaction.READ_ONLY);
 
-  var request = tx.objectStore(FILE_STORE).get(fullPath);
+  //var request = tx.objectStore(FILE_STORE).get(fullPath);
+  var range = IDBKeyRange.bound(fullPath, fullPath + '0', false, true);
+  var request = tx.objectStore(FILE_STORE).get(range);
   request.onsuccess = function(e) {
     successCallback(e.target.result);
+  };
+  request.onerror = opt_errorCallback;
+};
+
+idb.getAllEntries = function(fullPath, successCallback, opt_errorCallback) {
+  if (!this.db) {
+    return;
+  }
+
+  var tx = this.db.transaction([FILE_STORE], IDBTransaction.READ_ONLY);
+
+  var results = [];
+
+  //var range = IDBKeyRange.lowerBound(fullPath, false);
+
+  var request = tx.objectStore(FILE_STORE).openCursor();//range);
+
+  request.onsuccess = function(e) {
+    var cursor = e.target.result;
+    if (cursor) {
+      var val = cursor.value;
+      // IDB wont' save methods, so we need re-create entry.
+      results.push(val.isFile ? new FileEntry(val) : new DirectoryEntry(val));
+      cursor.continue();
+    } else {
+      successCallback(results);
+    }
   };
   request.onerror = opt_errorCallback;
 };
@@ -586,7 +650,9 @@ idb.delete = function(fullPath, successCallback, opt_errorCallback) {
 
   var tx = this.db.transaction([FILE_STORE], IDBTransaction.READ_WRITE);
 
-  var request = tx.objectStore(FILE_STORE).delete(fullPath);
+  //var request = tx.objectStore(FILE_STORE).delete(fullPath);
+  var range = IDBKeyRange.bound(fullPath, fullPath + '0', false, true);
+  var request = tx.objectStore(FILE_STORE).delete(range);
   request.onsuccess = function(e) {
     successCallback(/*e.target.result*/);
   };
@@ -604,29 +670,6 @@ idb.put = function(entry, successCallback, opt_errorCallback) {
   request.onsuccess = function(e) {
     // TODO: Error is thrown if we pass the request event back instead.
     successCallback(entry);
-  };
-  request.onerror = opt_errorCallback;
-};
-
-idb.getAllEntries = function(successCallback, opt_errorCallback) {
-  if (!this.db) {
-    return;
-  }
-
-  var tx = this.db.transaction([FILE_STORE], IDBTransaction.READ_ONLY);
-
-  var results = [];
-  var request = tx.objectStore(FILE_STORE).openCursor();
-  request.onsuccess = function(e) {
-    var cursor = e.target.result;
-    if (cursor) {
-      var val = cursor.value;
-      // IDB wont' save methods, so we need re-create entry.
-      results.push(val.isFile ? new FileEntry(val) : new DirectoryEntry(val));
-      cursor.continue();
-    } else {
-      successCallback(results);
-    }
   };
   request.onerror = opt_errorCallback;
 };

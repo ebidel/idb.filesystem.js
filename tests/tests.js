@@ -142,7 +142,7 @@ test('read directory', 2, function() {
   }, onError);
 });
 
-test('getFile()', 2, function() {
+test('getFile()', 5, function() {
   var fs = this.fs;
   var entry = fs.root;
   var FILE_NAME = 'idb_test_file_name' + Date.now();
@@ -166,6 +166,44 @@ test('getFile()', 2, function() {
       });
     }, onError);
   }, onError);
+
+  var FILE_NAME3 = FILE_NAME + '_3';
+  stop();
+  entry.getFile(FILE_NAME3, {create: true}, function(fileEntry) {
+    entry.getFile(fileEntry.fullPath, {create: true, exclusive: true}, function(fileEntry2) {
+      ok(false, 'exclusive was set, file exists, and no error was thrown');
+      start();
+    }, function(e) {
+      ok(true, 'exclusive was set, file exists, and error was thrown');
+      fileEntry.remove(function() {
+        start();
+      });
+    });
+  }, onError);
+
+  stop();
+  var FILE_NAME4 = FILE_NAME + '_4';
+  entry.getFile(FILE_NAME4, {}, function(fileEntry) {
+    ok(false, 'file existed');
+    start();
+  }, function(e) {
+    ok(true, "{} returned error when file didn't exist");
+    start();
+  });
+
+  stop();
+  var FILE_NAME5 = FILE_NAME + '_5';
+  entry.getDirectory(FILE_NAME5, {create: true}, function(folderEntry) {
+    entry.getFile(FILE_NAME5, {create: true}, function(fileEntry) {
+      ok(false, 'tried to create folder with same path as an existing file');
+      start();
+    }, function(e) {
+      ok(true, 'tried to create folder with same path as an existing file');
+      folderEntry.remove(function() {
+        start();
+      });
+    });
+  }, onError);
 });
 
 test('add/remove file in directory', 4, function() {
@@ -185,10 +223,11 @@ test('add/remove file in directory', 4, function() {
   }, onError);
 });
 
-test('getDirectory()', 5, function() {
+test('getDirectory()', 8, function() {
   var fs = this.fs;
   var entry = fs.root;
   var FOLDER_NAME = 'idb_test_folder_name' + Date.now();
+  var FILE_NAME = 'idb_test_file_name' + Date.now();
 
   stop();
   entry.getDirectory(FOLDER_NAME, {create: false}, function(folderEntry) {
@@ -208,6 +247,43 @@ test('getDirectory()', 5, function() {
     equal(folderEntry.name, FOLDER_NAME2, "folder name matches one that was set");
     folderEntry.remove(function() {
       start();
+    });
+  }, onError);
+
+  var FOLDER_NAME3 = FOLDER_NAME + '_3';
+  stop();
+  entry.getDirectory(FOLDER_NAME3, {create: true}, function(folderEntry) {
+    entry.getDirectory(folderEntry.fullPath, {create: true, exclusive: true}, function(folderEntry2) {
+      ok(false, 'exclusive was set, folder exists, and no error was thrown');
+      start();
+    }, function(e) {
+      ok(true, 'exclusive was set, folder exists, and error was thrown');
+      folderEntry.remove(function() {
+        start();
+      });
+    });
+  }, onError);
+
+  stop();
+  var FOLDER_NAME4 = FOLDER_NAME + '_4';
+  entry.getDirectory(FOLDER_NAME4, {}, function(folderEntry) {
+    ok(false, 'folder existed');
+    start();
+  }, function(e) {
+    ok(true, "{} returned error when folder didn't exist");
+    start();
+  });
+
+  stop();
+  entry.getFile(FILE_NAME, {create: true}, function(fileEntry) {
+    entry.getDirectory(FILE_NAME, {create: true}, function(folderEntry) {
+      ok(false, 'tried to create folder with same path as an existing file');
+      start();
+    }, function(e) {
+      ok(true, 'tried to create folder with same path as an existing file');
+      fileEntry.remove(function() {
+        start();
+      });
     });
   }, onError);
 });
