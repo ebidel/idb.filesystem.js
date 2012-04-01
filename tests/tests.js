@@ -223,7 +223,7 @@ test('add/remove file in directory', 4, function() {
   }, onError);
 });
 
-test('getDirectory()', 8, function() {
+test('getDirectory()', 9, function() {
   var fs = this.fs;
   var entry = fs.root;
   var FOLDER_NAME = 'idb_test_folder_name' + Date.now();
@@ -286,6 +286,20 @@ test('getDirectory()', 8, function() {
       });
     });
   }, onError);
+
+  stop();
+  var FOLDER_NAME5 = FOLDER_NAME + '_5';
+  entry.getDirectory(FOLDER_NAME5, {create: true}, function(folderEntry) {
+    folderEntry.getDirectory(FOLDER_NAME5, {create: true}, function(folderEntry2) {
+      equal(folderEntry2.fullPath, '/' + FOLDER_NAME5 + '/' + FOLDER_NAME5,
+            'Subfolder created successfully');
+      folderEntry.removeRecursively(function() {
+        start();
+      });
+    }, onError);
+  }, onError);
+
+  // TODO: test dirEntry.removeRecursively()
 });
 
 

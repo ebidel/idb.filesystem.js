@@ -235,6 +235,8 @@ Entry.prototype = {
     if (!successCallback) {
       throw Error('Expected successCallback argument.');
     }
+    // TODO: This doesn't protect against directories that have content in it.
+    // Should throw an error instead if the dirEntry is not empty.
     idb.delete(this.fullPath, function() {
       successCallback();
     }, opt_errorCallback);
@@ -472,9 +474,7 @@ DirectoryEntry.prototype.removeRecursively = function(successCallback,
     throw Error('Expected successCallback argument.');
   }
 
-  idb.drop(function(e) {
-    successCallback();
-  }, opt_errorCallback);
+  this.remove(successCallback, opt_errorCallback);
 };
 
 /**
@@ -713,10 +713,10 @@ idb.put = function(entry, successCallback, opt_errorCallback) {
 function onError(e) {
   switch (e.target.errorCode) {
     case 12:
-      logger.log('Error - Attempt to open database with a lower version than current.');
+      console.log('Error - Attempt to open database with a lower version than current.');
       break;
     default:
-      logger.log('<p>errorCode: ' + e.target.errorCode + '</p>');
+      console.log('<p>errorCode: ' + e.target.errorCode + '</p>');
   }
 
   console.log(e, e.code, e.message);
