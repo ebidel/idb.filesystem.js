@@ -20,10 +20,6 @@ body {
   background: radial-gradient(center center, #fff, #eee) no-repeat;
   color: #222;
   overflow-x: hidden;
-  -moz-font-smoothing: antialiased;
-  -webkit-font-smoothing: antialiased;
-  -ms-font-smoothing: antialiased;
-  -o-font-smoothing: antialiased;
   padding: 3em;
 }
 .dropping {

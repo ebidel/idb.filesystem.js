@@ -17,7 +17,7 @@ console.log(e)
 }
 
 function clearFS() {
-	/*fs.root.createReader().readEntries(function(results) {
+	fs.root.createReader().readEntries(function(results) {
 	  [].forEach.call(results, function(entry) {
 		  if (entry.isDirectory) {
 			  entry.removeRecursively(function() {}, onError);
@@ -25,10 +25,12 @@ function clearFS() {
 				entry.remove(function() {}, onError);
 			}
 		});
-  }, onError);*/
-  idb.drop(function(e) {
-    logger.log('<p>Database deleted!</p>');
+    getAllEntries(fs.root);
   }, onError);
+
+  // idb.drop(function(e) {
+  //   logger.log('<p>Database deleted!</p>');
+  // }, onError);
 }
 
 function openFS() {
