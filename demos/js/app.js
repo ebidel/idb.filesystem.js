@@ -5,13 +5,14 @@ window.requestFileSystem = window.requestFileSystem ||
 window.URL = window.URL || window.webkitURL;
 
 var openFSButton = document.querySelector('#openFSButton');
-
+var preview = document.querySelector('#preview');
 var logger = new Logger('#log');
 var fs = null;
 var cwd = null;
 var html = [];
 
 function onError(e) {
+console.log(e)
   logger.log('Error ' + e.code + ' - ' + e.name);
 }
 
@@ -43,7 +44,7 @@ function openFS() {
 }
 
 function writeFile(file, i) {
-  cwd.getFile(file.name, {create: true, exclusive: true}, function(fileEntry) {
+  cwd.getFile(file.name, {create: true, exclusive: false}, function(fileEntry) {
     fileEntry.createWriter(function(fileWriter) {
       fileWriter.onwritestart = function() {
         console.log('WRITE START');
@@ -78,12 +79,17 @@ function getAllEntries(dirEntry) {
       deleteLink.onclick = function(e) {
         e.preventDefault();
 
-        entry.remove(function() {
-          //var li = e.target.parentElement.parentElement.parentElement;
-          //li.parentElement.removeChild(li);
+        if (entry.isDirectory) {
+          entry.removeRecursively(function() {
           logger.log('<p>Removed ' + entry.name + '</p>');
           getAllEntries(window.cwd);
         });
+        } else {
+          entry.remove(function() {
+          logger.log('<p>Removed ' + entry.name + '</p>');
+          getAllEntries(window.cwd);
+        });
+        }
         return false;
       };
 
@@ -125,7 +131,37 @@ function getAllEntries(dirEntry) {
               span.appendChild(document.createTextNode(entry.fullPath + " (can't play)"));
 	  	      }
   	      } else {
-            span.appendChild(document.createTextNode(entry.fullPath));
+            var a = document.createElement('a');
+            a.href = '';
+            a.textContent = entry.fullPath;
+
+            a.onclick = function(e) {
+              e.preventDefault();
+
+              var iframe = preview.querySelector('iframe');
+              if (!iframe) {
+                iframe = document.createElement('iframe');
+              } else {
+                window.URL.revokeObjectURL(iframe.src);
+              }
+
+              preview.innerHTML = '';
+
+              if (this.classList.contains('active')) {
+                this.classList.remove('active');
+                return;
+              } else {
+                this.classList.add('active');
+              }
+
+              iframe.src = window.URL.createObjectURL(f);
+              preview.innerHTML = '';
+              preview.appendChild(iframe);
+
+              return false;
+            };
+
+            span.appendChild(a)
           }
 
           var img = document.createElement('img');
@@ -173,10 +209,19 @@ function getAllEntries(dirEntry) {
   }, onError);
 }
 
-function mkdir(folderName) {
-  cwd.getDirectory(folderName, {create: true, exclusive: true}, function(dirEntry) {
+function create(el) {
+  cwd.getFile(el.value, {create: true, exclusive: true}, function(fileEntry) {
+    logger.log('<p>Created empty file <em>' + fileEntry.fullPath, + '</em></p>');
+    getAllEntries(cwd);
+    el.value = '';
+  }, onError);
+}
+
+function mkdir(el) {
+  cwd.getDirectory(el.value, {create: true, exclusive: true}, function(dirEntry) {
     logger.log('<p>Created folder <em>' + dirEntry.fullPath, + '</em></p>');
     getAllEntries(cwd);
+    el.value = '';
   }, onError);
 }
 
@@ -213,10 +258,10 @@ function playPauseAudio(e) {
   var audio = a.querySelector('audio');
   if (audio.paused) {
     audio.play();
-    a.classList.add('playing');
+    a.classList.add('active');
   } else {
     audio.pause();
-    a.classList.remove('playing');
+    a.classList.remove('active');
   }
   e.preventDefault();
 }

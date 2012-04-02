@@ -30,8 +30,13 @@ Author: Eric Bidelman (ebidel@gmail.com)
 <header>
   <button id="openFSButton" onclick="openFS();">Open</button>
   <button onclick="clearFS();">Drop</button>
-  <button onclick="getAllEntries(cwd);">List</button>
-  <button onclick="mkdir(this.nextSibling.value);">Create</button><input type="text" placeholder="Folder name">
+  <button onclick="getAllEntries(cwd);">Refresh</button>
+  <span>
+    <input type="text" placeholder="Folder name"><button onclick="mkdir(this.previousSibling);" class="inner">Create</button>
+  </span>
+  <span>
+    <input type="text" placeholder="File name"><button onclick="create(this.previousSibling);" class="inner">New</button>
+  </span>
 </header>
 <div class="panel">
   <section>
@@ -43,6 +48,8 @@ Author: Eric Bidelman (ebidel@gmail.com)
 </div>
 <section class="panel">
   <div id="log"></div>
+</section>
+<section id="preview">
 </section>
 
 <script src="../src/idb.filer.js" defer></script>
