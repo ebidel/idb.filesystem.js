@@ -220,16 +220,16 @@ Entry.prototype = {
   fullPath: null,
   filesystem: null,
   copyTo: function() {
-    
+    throw NOT_IMPLEMENTED_ERR;
   },
   getMetadata: function() {
-    
+    throw NOT_IMPLEMENTED_ERR;
   },
   getParent: function() {
-    
+    throw NOT_IMPLEMENTED_ERR;
   },
   moveTo: function() {
-    
+    throw NOT_IMPLEMENTED_ERR;
   },
   remove: function(successCallback, opt_errorCallback) {
     if (!successCallback) {
@@ -534,7 +534,7 @@ idb.open = function(dbName, successCallback, opt_errorCallback) {
 
   request.onupgradeneeded = function(e) {
     // First open was called or higher db version was used.
-    logger.log('<p>onupgradeneeded: oldVersion:' + e.oldVersion +
+    console.log('<p>onupgradeneeded: oldVersion:' + e.oldVersion +
                ' newVersion:' + e.newVersion + '</p>');
     
     self.db = e.target.result;

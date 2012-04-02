@@ -164,11 +164,11 @@ function getAllEntries(dirEntry) {
             span.appendChild(a)
           }
 
-          var img = document.createElement('img');
+          /*var img = document.createElement('img');
           img.src = 'images/icons/file.png';
           img.title = 'This item is a file';
           img.alt = img.title;
-          span.appendChild(img);
+          span.appendChild(img);*/
 
           li.appendChild(span);
 	      }, onError);
