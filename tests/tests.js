@@ -25,6 +25,42 @@ module('window methods', {
   ok(window.idb === undefined, 'idb was exposed to global scope');
 });*/
 
+module('helpers', {
+  setup: function() {
+    
+  },
+  teardown: function() {
+
+  }
+});
+
+test('resolveToFullPath_', 23, function() {
+  equal(resolveToFullPath_('/', '/'), '/');
+  equal(resolveToFullPath_('/', '/asdf/'), '/asdf');
+  equal(resolveToFullPath_('/asdf', '/asdf'), '/asdf');
+  equal(resolveToFullPath_('/asdf/asdf', '/asdf/asdf/..'), '/asdf');
+  equal(resolveToFullPath_('/asdf/asdf', '/asdf/asdf/../'), '/asdf');
+  equal(resolveToFullPath_('/asdf/asdf', '..'), '/asdf');
+  equal(resolveToFullPath_('/asdf/asdf', '../'), '/asdf');
+  equal(resolveToFullPath_('/asdf/asdf', '/asdf/asdf/..'), '/asdf');
+  equal(resolveToFullPath_('/', 'asdf'), '/asdf');
+  equal(resolveToFullPath_('/', 'asdf/'), '/asdf');
+  equal(resolveToFullPath_('/asdf', 'asdf'), '/asdf/asdf');
+  equal(resolveToFullPath_('/', './asdf'), '/asdf');
+  equal(resolveToFullPath_('/asdf', './one/./'), '/asdf/one');
+  equal(resolveToFullPath_('/asdf', './one/./two'), '/asdf/one/two');
+  equal(resolveToFullPath_('/', '.'), '/');
+  equal(resolveToFullPath_('/asdf', '.'), '/asdf');
+  equal(resolveToFullPath_('/', './'), '/');
+  equal(resolveToFullPath_('/', '../'), '/');
+  equal(resolveToFullPath_('/', '..'), '/');
+  equal(resolveToFullPath_('/asdf', '../'), '/');
+
+  equal(resolveToFullPath_('/', 'test.mp3'), '/test.mp3');
+  equal(resolveToFullPath_('/asdf', 'test.mp3'), '/asdf/test.mp3');
+  equal(resolveToFullPath_('/asdf/one', './test.mp3'), '/asdf/one/test.mp3');
+});
+
 test('requestFileSystem', 10, function() {
   ok(window.requestFileSystem, 'window.requestFileSystem defined');
   equal(window.TEMPORARY, 0);
@@ -91,11 +127,8 @@ test('verify properties/methods exist', 9, function() {
 });
 
 test('toURL()', 1, function() {
-  try {
-    var url = this.fs.root.toURL();
-  } catch(e) {
-    ok(true, 'toURL() correctly threw not implemented error');
-  }
+  var origin = location.protocol + '//' + location.host;
+  equal(this.fs.root.toURL(), 'filesystem:' + origin + '/temporary/', '');
 });
 
 module('DirectoryEntry', {

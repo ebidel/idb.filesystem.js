@@ -12,7 +12,7 @@ var cwd = null;
 var html = [];
 
 function onError(e) {
-console.log(e)
+  console.log(e);
   logger.log('Error ' + e.code + ' - ' + e.name);
 }
 

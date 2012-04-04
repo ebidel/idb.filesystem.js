@@ -56,6 +56,7 @@ function MyFileError(obj) {
   this.name = obj.name;
 }
 MyFileError.prototype = FileError.prototype;
+MyFileError.prototype.toString = Error.prototype.toString;
 
 var INVALID_MODIFICATION_ERR = new MyFileError({
       code: FileError.INVALID_MODIFICATION_ERR,
@@ -66,26 +67,60 @@ var NOT_FOUND_ERR = new MyFileError({code: FileError.NOT_FOUND_ERR,
                                      name: 'Not found'});
 
 var fs_ = null;
+var storageType_ = 'temporary'; // temporary by default.
 var idb = {};
 idb.db = null;
 var FILE_STORE = 'entries';
 
 
 // When saving an entry, the fullPath should always lead with a slash and never
-// end with one (e.g. a directory). This method ensures path is legit.
-function fixFullPath_(cwdFullPath, path) {
+// end with one (e.g. a directory). Also, resolve '.' and '..' to an absolute
+// one. This method ensures path is legit!
+function resolveToFullPath_(cwdFullPath, path) {
   var fullPath = path;
-  if (fullPath[0] != '/') {
+
+  var relativePath = path[0] != '/';
+  if (relativePath) {
     fullPath = cwdFullPath;
-    if (cwdFullPath.length > 1) {
+    if (cwdFullPath != '/') {
       fullPath += '/' + path;
     } else {
       fullPath += path;
     }
   }
-  if (fullPath[fullPath.length - 1] == '/') {
-    fullPath = fullPath.substring(0, fullPath.length - 1);
+
+  // Adjust '..'s by removing parent directories when '..' flows in path.
+  var parts = fullPath.split('/');
+  for (var i = 0; i < parts.length; ++i) {
+    var part = parts[i];
+    if (part == '..') {
+      parts[i - 1] = '';
+      parts[i] = '';
+    }
   }
+  fullPath = parts.filter(function(el) {
+    return el;
+  }).join('/');
+
+  // Add back in leading slash.
+  if (fullPath[0] != '/') {
+    fullPath = '/' + fullPath;
+  } 
+
+  // Replace './' by current dir. ('./one/./two' -> one/two)
+  fullPath = fullPath.replace(/\.\//g, '/');
+
+  // Replace '//' with '/'.
+  fullPath = fullPath.replace(/\/\//g, '/');
+
+  // Replace '/.' with '/'.
+  fullPath = fullPath.replace(/\/\./g, '/');
+
+  // Remove '/' if it appears on the end.
+  if (fullPath[fullPath.length - 1] == '/' && fullPath != '/') {
+    fullPath = fullPath.substring(0, fullPath.length - 1);
+  }  
+
   return fullPath;
 }
 
@@ -181,6 +216,7 @@ FileWriter.prototype = {
     throw NOT_IMPLEMENTED_ERR;
   },
   truncate: function(size) {
+    this.onwriteend();
     throw NOT_IMPLEMENTED_ERR;
   }
 }
@@ -195,12 +231,27 @@ FileWriter.prototype = {
  */
 function DirectoryReader(dirEntry) {
   var dirEntry_ = dirEntry;
+  var used_ = false;
 
   this.readEntries = function(successCallback, opt_errorCallback) {
     if (!successCallback) {
       throw Error('Expected successCallback argument.');
     }
-    idb.getAllEntries(dirEntry_.fullPath, successCallback, opt_errorCallback);
+
+    // This is necessary to mimic the way DirectoryReader.readEntries() should
+    // normally behavior.  According to spec, readEntries() needs to be called
+    // until the length of result array is 0. To handle someone implementing
+    // a recursive call to readEntries(), get everything from indexedDB on the
+    // first shot. Then (DirectoryReader has been used), return an empty
+    // result array.
+    if (!used_) {
+      idb.getAllEntries(dirEntry_.fullPath, function(entries) {
+        used_= true;
+        successCallback(entries);
+      }, opt_errorCallback);
+    } else {
+      successCallback([]);
+    }
   };
 };
 
@@ -242,7 +293,8 @@ Entry.prototype = {
     }, opt_errorCallback);
   },
   toURL: function() {
-    throw NOT_IMPLEMENTED_ERR;
+    var origin = location.protocol + '//' + location.host;
+    return 'filesystem:' + origin + '/' + storageType_.toLowerCase() + this.fullPath;
   },
 };
 
@@ -350,8 +402,9 @@ DirectoryEntry.prototype.createReader = function() {
 };
 DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
                                                  opt_errorCallback) {
+
   // Create an absolute path if we were handed a relative one.
-  path = fixFullPath_(this.fullPath, path);
+  path = resolveToFullPath_(this.fullPath, path);
 
   idb.get(path, function(folderEntry) {
     if (options.create === true && options.exclusive === true && folderEntry) {
@@ -367,10 +420,9 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
       // DirectoryEntry.
       var dirEntry = new DirectoryEntry();
       dirEntry.name = path.split('/').pop(); // Just need filename.
-      dirEntry.fullPath = path; // TODO(ericbidelman): set this correctly
+      dirEntry.fullPath = path;
       dirEntry.filesystem = fs_;
-      //dirEntry.file_ = new MyFile({size: 0, name: fileEntry.name}); // TODO: create a zero-length file and attach it (fileEntry.file_=file).
-
+  
       idb.put(dirEntry, successCallback, opt_errorCallback);
     } else if (options.create === true && folderEntry) {
 
@@ -384,6 +436,16 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
         }
       }
     } else if ((!options.create || options.create === false) && !folderEntry) {
+      // Handle root special. It should always exist.
+      if (path == '/') {
+        folderEntry = new DirectoryEntry();
+        folderEntry.name = '';
+        folderEntry.fullPath = '/';
+        folderEntry.filesystem = fs_;
+        successCallback(folderEntry);
+        return;
+      }
+
       // If create is not true and the path doesn't exist, getDirectory must fail.
       if (opt_errorCallback) {
         opt_errorCallback(INVALID_MODIFICATION_ERR);
@@ -411,7 +473,7 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
                                             opt_errorCallback) {
 
   // Create an absolute path if we were handed a relative one.
-  path = fixFullPath_(this.fullPath, path);
+  path = resolveToFullPath_(this.fullPath, path);
 
   idb.get(path, function(fileEntry) {
     if (options.create === true && options.exclusive === true && fileEntry) {
@@ -488,8 +550,9 @@ DirectoryEntry.prototype.removeRecursively = function(successCallback,
  * @constructor
  */
 function DOMFileSystem(type, size) {
-  var str = type == exports.TEMPORARY ? 'Temporary' : 'Persistent';
-  var name = (location.protocol + location.host).replace(/:/g, '_') + ':' + str;
+  storageType_ = type == exports.TEMPORARY ? 'Temporary' : 'Persistent';
+  var name = (location.protocol + location.host).replace(/:/g, '_') + ':' +
+             storageType_;
 
   this.name = name;
   this.root = new DirectoryEntry();
@@ -534,8 +597,8 @@ idb.open = function(dbName, successCallback, opt_errorCallback) {
 
   request.onupgradeneeded = function(e) {
     // First open was called or higher db version was used.
-    console.log('<p>onupgradeneeded: oldVersion:' + e.oldVersion +
-               ' newVersion:' + e.newVersion + '</p>');
+    console.log('onupgradeneeded: oldVersion:' + e.oldVersion,
+                'newVersion:' + e.newVersion);
     
     self.db = e.target.result;
     self.db.onerror = onError;
@@ -737,6 +800,7 @@ if (exports === window && exports.RUNNING_TESTS) {
   exports['Entry'] = Entry;
   exports['FileEntry'] = FileEntry;
   exports['DirectoryEntry'] = DirectoryEntry;
+  exports['resolveToFullPath_'] = resolveToFullPath_;
 }
 
 })(self); // Don't use window because we want to run in workers.
