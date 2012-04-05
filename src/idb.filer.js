@@ -137,7 +137,7 @@ function resolveToFullPath_(cwdFullPath, path) {
  */
 function MyFile(opts) {
   var blob_ = null;
-  var self = this;
+  var self_ = this;
 
   this.size = opts.size || 0;
   this.name = opts.name || '';
@@ -152,9 +152,9 @@ function MyFile(opts) {
   // blob that is saved.
   this.__defineSetter__('blob_', function(val) {
     blob_ = val;
-    self.size = blob_.size;
-    self.name = blob_.name;
-    self.type = blob_.type;
+    self_.size = blob_.size;
+    self_.name = blob_.name;
+    self_.type = blob_.type;
   });
 }
 MyFile.prototype.constructor = MyFile; 
@@ -188,18 +188,18 @@ function FileWriter(fileEntry) {
       throw Error('Expected blob argument to write.');
     }
 
-    var self = this;
-
     // Set the blob we're writing on this file entry so we can recall it later.
     fileEntry_.file_.blob_ = blob;
 
     // Call onwritestart if it was defined.
-    if (self.onwritestart) {
-      self.onwritestart();
+    if (this.onwritestart) {
+      this.onwritestart();
     }
 
-    // TODO: throw an error if onprogress, onwrite, onabort are defined.
+    // TODO: not handling onprogress, onwrite, onabort. Throw an error if
+    // they're defined.
 
+    var self = this;
     idb.put(fileEntry_, function(entry) {
       if (self.onwriteend) {
         // Set writer.position/write.length to same.
