@@ -124,6 +124,14 @@ function resolveToFullPath_(cwdFullPath, path) {
   return fullPath;
 }
 
+// // Path can be relative or absolute. If relative, it's taken from the cwd_.
+// // If a filesystem URL is passed it, it is simple returned
+// function pathToFsURL_(path) {
+//   path = resolveToFullPath_(cwdFullPath, path);
+//   path = fs_.root.toURL() + path.substring(1);
+//   return path;
+// };
+
 /**
  * Interface to wrap the native File interface.
  *

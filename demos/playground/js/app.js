@@ -502,7 +502,8 @@ function addListeners() {
   });
 }
 
-window.addEventListener('DOMContentLoaded', function(e) {
+// DOMContentLoaded seems to be an issue with FF.
+window.addEventListener('load', function(e) {
   var count = 0;
   setInterval(function() {
     ticker.innerHTML =
