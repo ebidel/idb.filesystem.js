@@ -6,7 +6,7 @@ It is intended for browsers that do not support the API natively.
 
 The library works by using [IndexedDB][2] as its underlying storage layer. Essentially,
 this means that any browser supporting IndexedDB also supports the Filesystem API!
-All you need to do is make the Filesystem API calls. The rest is magic.
+All you need to do is make Filesystem API calls, and the rest is magic.
 
 Supported Browsers
 ------------------
