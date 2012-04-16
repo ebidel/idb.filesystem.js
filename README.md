@@ -1,7 +1,7 @@
 idb.filer.js
 ===========
 
-idb.filer.js is a [well tested](master/tests) JavaScript polyfill implementation
+idb.filer.js is a [well tested](/idb.filer.js/tree/master/tests) JavaScript polyfill implementation
 of the HTML5 [Filesystem API][1]. It is intended for browsers that do not
 support the API natively.
 
