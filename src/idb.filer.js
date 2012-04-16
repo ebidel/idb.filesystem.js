@@ -75,6 +75,11 @@ var idb_ = {};
 idb_.db = null;
 var FILE_STORE_ = 'entries';
 
+var DIR_SEPARATOR = '/';
+var DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1);
+
+var READ_ONLY = IDBTransaction.READ_ONLY || 'readonly';
+var READ_WRITE = IDBTransaction.READ_WRITE || 'readwrite';
 
 // When saving an entry, the fullPath should always lead with a slash and never
 // end with one (e.g. a directory). Also, resolve '.' and '..' to an absolute
@@ -82,18 +87,18 @@ var FILE_STORE_ = 'entries';
 function resolveToFullPath_(cwdFullPath, path) {
   var fullPath = path;
 
-  var relativePath = path[0] != '/';
+  var relativePath = path[0] != DIR_SEPARATOR;
   if (relativePath) {
     fullPath = cwdFullPath;
-    if (cwdFullPath != '/') {
-      fullPath += '/' + path;
+    if (cwdFullPath != DIR_SEPARATOR) {
+      fullPath += DIR_SEPARATOR + path;
     } else {
       fullPath += path;
     }
   }
 
   // Adjust '..'s by removing parent directories when '..' flows in path.
-  var parts = fullPath.split('/');
+  var parts = fullPath.split(DIR_SEPARATOR);
   for (var i = 0; i < parts.length; ++i) {
     var part = parts[i];
     if (part == '..') {
@@ -103,24 +108,25 @@ function resolveToFullPath_(cwdFullPath, path) {
   }
   fullPath = parts.filter(function(el) {
     return el;
-  }).join('/');
+  }).join(DIR_SEPARATOR);
 
   // Add back in leading slash.
-  if (fullPath[0] != '/') {
-    fullPath = '/' + fullPath;
+  if (fullPath[0] != DIR_SEPARATOR) {
+    fullPath = DIR_SEPARATOR + fullPath;
   } 
 
   // Replace './' by current dir. ('./one/./two' -> one/two)
-  fullPath = fullPath.replace(/\.\//g, '/');
+  fullPath = fullPath.replace(/\.\//g, DIR_SEPARATOR);
 
   // Replace '//' with '/'.
-  fullPath = fullPath.replace(/\/\//g, '/');
+  fullPath = fullPath.replace(/\/\//g, DIR_SEPARATOR);
 
   // Replace '/.' with '/'.
-  fullPath = fullPath.replace(/\/\./g, '/');
+  fullPath = fullPath.replace(/\/\./g, DIR_SEPARATOR);
 
   // Remove '/' if it appears on the end.
-  if (fullPath[fullPath.length - 1] == '/' && fullPath != '/') {
+  if (fullPath[fullPath.length - 1] == DIR_SEPARATOR &&
+      fullPath != DIR_SEPARATOR) {
     fullPath = fullPath.substring(0, fullPath.length - 1);
   }  
 
@@ -305,7 +311,7 @@ Entry.prototype = {
   },
   toURL: function() {
     var origin = location.protocol + '//' + location.host;
-    return 'filesystem:' + origin + '/' + storageType_.toLowerCase() +
+    return 'filesystem:' + origin + DIR_SEPARATOR + storageType_.toLowerCase() +
            this.fullPath;
   },
 };
@@ -432,7 +438,7 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
       // getDirectory must create it as a zero-length file and return a corresponding
       // DirectoryEntry.
       var dirEntry = new DirectoryEntry();
-      dirEntry.name = path.split('/').pop(); // Just need filename.
+      dirEntry.name = path.split(DIR_SEPARATOR).pop(); // Just need filename.
       dirEntry.fullPath = path;
       dirEntry.filesystem = fs_;
   
@@ -450,10 +456,10 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
       }
     } else if ((!options.create || options.create === false) && !folderEntry) {
       // Handle root special. It should always exist.
-      if (path == '/') {
+      if (path == DIR_SEPARATOR) {
         folderEntry = new DirectoryEntry();
         folderEntry.name = '';
-        folderEntry.fullPath = '/';
+        folderEntry.fullPath = DIR_SEPARATOR;
         folderEntry.filesystem = fs_;
         successCallback(folderEntry);
         return;
@@ -502,7 +508,7 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
       // getFile must create it as a zero-length file and return a corresponding
       // FileEntry.
       var fileEntry = new FileEntry();
-      fileEntry.name = path.split('/').pop(); // Just need filename.
+      fileEntry.name = path.split(DIR_SEPARATOR).pop(); // Just need filename.
       fileEntry.fullPath = path;
       fileEntry.filesystem = fs_;
       fileEntry.file_ = new MyFile({size: 0, name: fileEntry.name});
@@ -567,7 +573,7 @@ function DOMFileSystem(type, size) {
   this.name = (location.protocol + location.host).replace(/:/g, '_') +
               ':' + storageType_;
   this.root = new DirectoryEntry();
-  this.root.fullPath = '/';
+  this.root.fullPath = DIR_SEPARATOR;
   this.root.filesystem = this;
   this.root.name = '';
 }
@@ -655,25 +661,23 @@ idb_.get = function(fullPath, successCallback, opt_errorCallback) {
     return;
   }
 
-  // TODO: use 'readonly' instead. IDBTransaction.READ_ONLY is deprecated.
-  var tx = this.db.transaction([FILE_STORE_], IDBTransaction.READ_ONLY);
+  var tx = this.db.transaction([FILE_STORE_], READ_ONLY);
 
   //var request = tx.objectStore(FILE_STORE_).get(fullPath);
-  var range = IDBKeyRange.bound(fullPath, fullPath + '0', false, true);
+  var range = IDBKeyRange.bound(fullPath, fullPath + DIR_OPEN_BOUND,
+                                false, true);
   var request = tx.objectStore(FILE_STORE_).get(range);
-  request.onsuccess = function(e) {
-    successCallback(e.target.result);
+
+  tx.onabort = opt_errorCallback || onError;
+  tx.oncomplete = function(e) {
+    successCallback(request.result);
   };
-  request.onerror = opt_errorCallback || onError;
 };
 
 idb_.getAllEntries = function(fullPath, successCallback, opt_errorCallback) {
   if (!this.db) {
     return;
   }
-
-  // TODO: use 'readonly' instead. IDBTransaction.READ_ONLY is deprecated. 
-  var tx = this.db.transaction([FILE_STORE_], IDBTransaction.READ_ONLY);
 
   var results = [];
 
@@ -683,10 +687,36 @@ idb_.getAllEntries = function(fullPath, successCallback, opt_errorCallback) {
   // Treat the root entry special. Querying it returns all entries because
   // they match '/'.
   var range = null;
-  if (fullPath != '/') {
-    //console.log(fullPath + '/', fullPath + '0')
-    range = IDBKeyRange.bound(fullPath + '/', fullPath + '0', false, false);
+  if (fullPath != DIR_SEPARATOR) {
+    //console.log(fullPath + '/', fullPath + DIR_OPEN_BOUND)
+    range = IDBKeyRange.bound(
+        fullPath + DIR_SEPARATOR, fullPath + DIR_OPEN_BOUND, false, true);
   }
+
+  var tx = this.db.transaction([FILE_STORE_], READ_ONLY);
+  tx.onabort = opt_errorCallback || onError;
+  tx.oncomplete = function(e) {
+    // TODO: figure out how to do be range queries instead of filtering result
+    // in memory :(
+    results = results.filter(function(val) {
+      var valPartsLen = val.fullPath.split(DIR_SEPARATOR).length;
+      var fullPathPartsLen = fullPath.split(DIR_SEPARATOR).length;
+      
+      if (fullPath == DIR_SEPARATOR && valPartsLen < fullPathPartsLen + 1) {
+        // Hack to filter out entries in the root folder. This is inefficient
+        // because reading the entires of fs.root (e.g. '/') returns ALL
+        // results in the database, then filters out the entries not in '/'.
+        return val;
+      } else if (fullPath != DIR_SEPARATOR &&
+                 valPartsLen == fullPathPartsLen + 1) {
+        // If this a subfolder and entry is a direct child, include it in
+        // the results. Otherwise, it's not an entry of this folder.
+        return val;
+      }
+    });
+
+    successCallback(results);
+  };
 
   var request = tx.objectStore(FILE_STORE_).openCursor(range);
 
@@ -697,30 +727,8 @@ idb_.getAllEntries = function(fullPath, successCallback, opt_errorCallback) {
 
       results.push(val.isFile ? new FileEntry(val) : new DirectoryEntry(val));
       cursor.continue();
-
-    } else {
-      // TODO: figure out how to do be range queries instead of filtering result
-      // in memory :(
-      results = results.filter(function(val) {
-        var valPartsLen = val.fullPath.split('/').length;
-        var fullPathPartsLen = fullPath.split('/').length;
-        
-        if (fullPath == '/' && valPartsLen < fullPathPartsLen + 1) {
-          // Hack to filter out entries in the root folder. This is inefficient
-          // because reading the entires of fs.root (e.g. '/') returns ALL
-          // results in the database, then filters out the entries not in '/'.
-          return val;
-        } else if (fullPath != '/' && valPartsLen == fullPathPartsLen + 1) {
-          // If this a subfolder and entry is a direct child, include it in
-          // the results. Otherwise, it's not an entry of this folder.
-          return val;
-        }
-      });
-
-      successCallback(results);
     }
   };
-  request.onerror = opt_errorCallback || onError;
 };
 
 idb_.delete = function(fullPath, successCallback, opt_errorCallback) {
@@ -728,16 +736,14 @@ idb_.delete = function(fullPath, successCallback, opt_errorCallback) {
     return;
   }
 
-  // TODO: use 'readwrite' instead. IDBTransaction.READ_WRITE is deprecated.
-  var tx = this.db.transaction([FILE_STORE_], IDBTransaction.READ_WRITE);
+  var tx = this.db.transaction([FILE_STORE_], READ_WRITE);
+  tx.oncomplete = successCallback;
+  tx.onabort = opt_errorCallback || onError;
 
   //var request = tx.objectStore(FILE_STORE_).delete(fullPath);
-  var range = IDBKeyRange.bound(fullPath, fullPath + '0', false, true);
+  var range = IDBKeyRange.bound(
+      fullPath, fullPath + DIR_OPEN_BOUND, false, true);
   var request = tx.objectStore(FILE_STORE_).delete(range);
-  request.onsuccess = function(e) {
-    successCallback(/*e.target.result*/);
-  };
-  request.onerror = opt_errorCallback || onError;
 };
 
 idb_.put = function(entry, successCallback, opt_errorCallback) {
@@ -745,15 +751,14 @@ idb_.put = function(entry, successCallback, opt_errorCallback) {
     return;
   }
 
-  // TODO: use 'readwrite' instead. IDBTransaction.READ_WRITE is deprecated.
-  var tx = this.db.transaction([FILE_STORE_], IDBTransaction.READ_WRITE);
-
-  var request = tx.objectStore(FILE_STORE_).put(entry, entry.fullPath);
-  request.onsuccess = function(e) {
+  var tx = this.db.transaction([FILE_STORE_], READ_WRITE);
+  tx.onabort = opt_errorCallback || onError;
+  tx.oncomplete = function(e) {
     // TODO: Error is thrown if we pass the request event back instead.
     successCallback(entry);
   };
-  request.onerror = opt_errorCallback || onError;
+
+  var request = tx.objectStore(FILE_STORE_).put(entry, entry.fullPath);
 };
 
 // Global error handler. Errors bubble from request, to transaction, to db.
