@@ -20,18 +20,6 @@ support IndexedDB will likely work; I just haven't tested them.
 [1]: http://dev.w3.org/2009/dap/file-system/pub/FileSystem/
 [2]: https://developer.mozilla.org/en/IndexedDB
 
-Using with filer.js
-------------------
-
-[filer.js](//github.com/ebidel/filer.js) is a convenience library for the
-HTML5 Filesystem API. It wraps API calls with familiar UNIX commands
-(`cp`, `mv`, `ls`) for its own API.
-
-filer.js works well with idb.filer.js, with a few exceptions. Unimplemented
-methods in this library and `filer.open()` (because `filesystem:` URLs are not
-known by unsupported browsers). There may be other API calls in filer.js that
-do not work, but I haven't tested them.
-
 Demo
 ===============
 
@@ -79,3 +67,15 @@ Basic example of opening the filesystem and writing to a new .txt file:
     function onError(e) {
       console.log('Error', e);
     }
+
+Using with filer.js
+------------------
+
+[filer.js](//github.com/ebidel/filer.js) is a convenience library for the
+HTML5 Filesystem API. It wraps API calls with familiar UNIX commands
+(`cp`, `mv`, `ls`) for its own API.
+
+filer.js works well with idb.filer.js, with a few exceptions. Unimplemented
+methods in this library and `filer.open()` (because `filesystem:` URLs are not
+known by unsupported browsers). There may be other API calls in filer.js that
+do not work, but I haven't tested them.
