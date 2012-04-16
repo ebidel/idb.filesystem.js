@@ -77,5 +77,5 @@ Basic example of opening the filesystem and writing to a new .txt file:
     }, onError);
 
     function onError(e) {
-    	console.log('Error', e);
+      console.log('Error', e);
     }
