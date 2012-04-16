@@ -20,8 +20,9 @@
  * into a folder. A single object store is sufficient because we can utilize the
  * properties of ASCII. Namely, ASCII / is followed by ASCII 0. Thus,
  * "/one/two/" comes before "/one/two/ANYTHING" comes before "/one/two/0".
- * 
+ *
  * @author Eric Bidelman (ebidel@gmail.com)
+ * @version: 0.0.1
  */
 
 'use strict';
