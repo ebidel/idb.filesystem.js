@@ -15,7 +15,7 @@ Supported Browsers
 * Firefox 14a1+
 
 Unlisted browsers and/or versions (e.g. earlier versions of Firefox) that
-which IndexedDB will likely work; I just haven't tested them.
+support IndexedDB will likely work; I just haven't tested them.
 
 [1]: http://dev.w3.org/2009/dap/file-system/pub/FileSystem/
 [2]: https://developer.mozilla.org/en/IndexedDB
