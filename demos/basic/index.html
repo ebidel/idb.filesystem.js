@@ -20,16 +20,22 @@ Author: Eric Bidelman (ebidel@gmail.com)
 <head>
 <meta charset="utf-8" />
 <meta http-equiv="X-UA-Compatible" content="chrome=1" />
-<title>HTML5 IndexeDB Filesystem</title>
+<title>idb.filer.js Sample App</title>
 <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Karla" type="text/css" />
 <link rel="stylesheet" href="css/app.css" type="text/css" />
 <link rel="shortcut icon" href="images/icons/favicon.png" />
 </head>
 <body>
 
+<a href="https://github.com/ebidel/idb.filer.js" target="_blank"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://a248.e.akamai.net/assets.github.com/img/7afbc8b248c68eb468279e8c17986ad46549fb71/687474703a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f6461726b626c75655f3132313632312e706e67" alt="Fork me on GitHub"></a>
+
 <header>
+  <hgroup>
+    <h2><a href="https://github.com/ebidel/idb.filer.js" target="_blank">idb.filer.js</a></h2>
+    <h3><a href="http://dev.w3.org/2009/dap/file-system/file-dir-sys.html" target="_blank">HTML5 Filesystem API</a> powered by <a href="https://developer.mozilla.org/en/IndexedDB" target="_blank">IndexedDB</a></h3>
+  </hgroup>
   <button id="openFSButton" onclick="openFS();">Open</button>
-  <button onclick="clearFS();">Drop</button>
+  <button onclick="clearFS();">Remove all</button>
   <button onclick="getAllEntries(cwd);">Refresh</button>
   <span>
     <input type="text" placeholder="Folder name"><button onclick="mkdir(this.previousSibling);" class="inner">Create</button>

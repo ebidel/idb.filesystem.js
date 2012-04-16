@@ -14,13 +14,12 @@
  * limitations under the License.
  
  * @fileoverview
- * This interface implements the HTML5 Filesystem API as a polyfill on top of
- * an IndexedDB storage layer. Files and folders are stored as FileEntry and
+ * A polyfill implementation of the HTML5 Filesystem API which sits on top of
+ * IndexedDB as storage layer. Files and folders are stored as FileEntry and
  * FolderEntry objects in a single object store. IDBKeyRanges are used to query
- * into a folder. The reason a single object store works is because we can
- * utilize the properties of ASCII. Namely, ASCII / is followed by ASCII 0,
- * so something like  "/one/two/" comes before "/one/two/ANYTHING" comes
- * before "/one/two/0".
+ * into a folder. A single object store is sufficient because we can utilize the
+ * properties of ASCII. Namely, ASCII / is followed by ASCII 0. Thus,
+ * "/one/two/" comes before "/one/two/ANYTHING" comes before "/one/two/0".
  * 
  * @author Eric Bidelman (ebidel@gmail.com)
  */
@@ -67,10 +66,13 @@ var NOT_FOUND_ERR = new MyFileError({code: FileError.NOT_FOUND_ERR,
                                      name: 'Not found'});
 
 var fs_ = null;
-var storageType_ = 'temporary'; // temporary by default.
-var idb = {};
-idb.db = null;
-var FILE_STORE = 'entries';
+
+// Browsers other than Chrome don't implement persistent vs. temporary storage.
+// but default to temporary anyway.
+var storageType_ = 'temporary';
+var idb_ = {};
+idb_.db = null;
+var FILE_STORE_ = 'entries';
 
 
 // When saving an entry, the fullPath should always lead with a slash and never
@@ -208,9 +210,9 @@ function FileWriter(fileEntry) {
     // they're defined.
 
     var self = this;
-    idb.put(fileEntry_, function(entry) {
+    idb_.put(fileEntry_, function(entry) {
       if (self.onwriteend) {
-        // Set writer.position/write.length to same.
+        // Set writer.position == write.length.
         position_ = entry.file_.size;
         length_ = position_;
         self.onwriteend();
@@ -253,7 +255,7 @@ function DirectoryReader(dirEntry) {
     // first shot. Then (DirectoryReader has been used), return an empty
     // result array.
     if (!used_) {
-      idb.getAllEntries(dirEntry_.fullPath, function(entries) {
+      idb_.getAllEntries(dirEntry_.fullPath, function(entries) {
         used_= true;
         successCallback(entries);
       }, opt_errorCallback);
@@ -296,13 +298,14 @@ Entry.prototype = {
     }
     // TODO: This doesn't protect against directories that have content in it.
     // Should throw an error instead if the dirEntry is not empty.
-    idb.delete(this.fullPath, function() {
+    idb_.delete(this.fullPath, function() {
       successCallback();
     }, opt_errorCallback);
   },
   toURL: function() {
     var origin = location.protocol + '//' + location.host;
-    return 'filesystem:' + origin + '/' + storageType_.toLowerCase() + this.fullPath;
+    return 'filesystem:' + origin + '/' + storageType_.toLowerCase() +
+           this.fullPath;
   },
 };
 
@@ -347,8 +350,9 @@ function FileEntry(opt_fileEntry) {
 FileEntry.prototype = new Entry();
 FileEntry.prototype.constructor = FileEntry; 
 FileEntry.prototype.createWriter = function(callback) {
-  // TODO: figure out if there's a way to dispatch onwrite event. Only call
-  // onwritend/onerror are called in FileEntry.write().
+  // TODO: figure out if there's a way to dispatch onwrite event as we're writing
+  // data to IDB. Right now, we're only calling onwritend/onerror
+  // FileEntry.write().
   callback(new FileWriter(this));
 };
 FileEntry.prototype.file = function(successCallback, opt_errorCallback) {
@@ -414,7 +418,7 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
   // Create an absolute path if we were handed a relative one.
   path = resolveToFullPath_(this.fullPath, path);
 
-  idb.get(path, function(folderEntry) {
+  idb_.get(path, function(folderEntry) {
     if (options.create === true && options.exclusive === true && folderEntry) {
       // If create and exclusive are both true, and the path already exists,
       // getDirectory must fail.
@@ -431,7 +435,7 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
       dirEntry.fullPath = path;
       dirEntry.filesystem = fs_;
   
-      idb.put(dirEntry, successCallback, opt_errorCallback);
+      idb_.put(dirEntry, successCallback, opt_errorCallback);
     } else if (options.create === true && folderEntry) {
 
       if (folderEntry.isDirectory) {
@@ -483,7 +487,7 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
   // Create an absolute path if we were handed a relative one.
   path = resolveToFullPath_(this.fullPath, path);
 
-  idb.get(path, function(fileEntry) {
+  idb_.get(path, function(fileEntry) {
     if (options.create === true && options.exclusive === true && fileEntry) {
       // If create and exclusive are both true, and the path already exists,
       // getFile must fail.
@@ -500,9 +504,9 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
       fileEntry.name = path.split('/').pop(); // Just need filename.
       fileEntry.fullPath = path;
       fileEntry.filesystem = fs_;
-      fileEntry.file_ = new MyFile({size: 0, name: fileEntry.name}); // TODO: create a zero-length file and attach it (fileEntry.file_=file).
+      fileEntry.file_ = new MyFile({size: 0, name: fileEntry.name});
 
-      idb.put(fileEntry, successCallback, opt_errorCallback);
+      idb_.put(fileEntry, successCallback, opt_errorCallback);
 
     } else if (options.create === true && fileEntry) {
       if (fileEntry.isFile) {
@@ -559,10 +563,8 @@ DirectoryEntry.prototype.removeRecursively = function(successCallback,
  */
 function DOMFileSystem(type, size) {
   storageType_ = type == exports.TEMPORARY ? 'Temporary' : 'Persistent';
-  var name = (location.protocol + location.host).replace(/:/g, '_') + ':' +
-             storageType_;
-
-  this.name = name;
+  this.name = (location.protocol + location.host).replace(/:/g, '_') +
+              ':' + storageType_;
   this.root = new DirectoryEntry();
   this.root.fullPath = '/';
   this.root.filesystem = this;
@@ -578,7 +580,7 @@ function requestFileSystem(type, size, successCallback, opt_errorCallback) {
   }
 
   fs_ = new DOMFileSystem(type, size);
-  idb.open(fs_.name, function(e) {
+  idb_.open(fs_.name, function(e) {
     successCallback(fs_);
   }, opt_errorCallback);
 }
@@ -590,29 +592,27 @@ function resolveLocalFileSystemURL(url, callback, opt_errorCallback) {
   }
 }
 
-// =============================================================================
+// Core logic to handle IDB operations =========================================
 
-idb.open = function(dbName, successCallback, opt_errorCallback) {
+idb_.open = function(dbName, successCallback, opt_errorCallback) {
   var self = this;
 
-//console.log(dbName)
-
-  // TODO(erbidelman): FF 12.0a1 isn't likeing a name with a : in it.
-  var request = exports.indexedDB.open(dbName.replace(':', '_'));//, 1 /*version*/);
-  //var request = exports.indexedDB.open(dbName);//, 1 /*version*/);
+  // TODO: FF 12.0a1 isn't liking a db name with : in it.
+  var request = exports.indexedDB.open(dbName.replace(':', '_')/*, 1 /*version*/);
 
   request.onerror = opt_errorCallback || onError;
 
   request.onupgradeneeded = function(e) {
     // First open was called or higher db version was used.
-    console.log('onupgradeneeded: oldVersion:' + e.oldVersion,
-                'newVersion:' + e.newVersion);
+
+   // console.log('onupgradeneeded: oldVersion:' + e.oldVersion,
+   //           'newVersion:' + e.newVersion);
     
     self.db = e.target.result;
     self.db.onerror = onError;
 
-    if (!self.db.objectStoreNames.contains(FILE_STORE)) {
-      var store = self.db.createObjectStore(FILE_STORE);//, {keyPath: 'id', autoIncrement: true});
+    if (!self.db.objectStoreNames.contains(FILE_STORE_)) {
+      var store = self.db.createObjectStore(FILE_STORE_/*,{keyPath: 'id', autoIncrement: true}*/);
     }
   };
 
@@ -621,48 +621,19 @@ idb.open = function(dbName, successCallback, opt_errorCallback) {
     self.db.onerror = onError;
     successCallback(e);
   };
-
-  // TODO(ericbidelman): handle blocked case.
-  request.onblocked = function(e) {
-    console.log('blocked');
-  };
+ 
+  request.onblocked = opt_errorCallback || onError;
 };
 
-idb.close = function() {
+idb_.close = function() {
   this.db.close();
   this.db = null;
 };
 
-// // For creating new folders.
-// // Current hella broken.
-// idb.addNewObjectStore = function(objectStoreName, opt_errorCallback) {
-//   var dbVersion = this.db.version;
-
-//   // Object stores can only be created in versionchange transactions. To make
-//   // that happen, we need to reopen the db and create an new obj store there.
-//   this.close();
-
-//   var self = this;
-
-//   // TODO: Don't reuse this code from idb.open().
-//   var request = exports.indexedDB.open(fs_.name.replace(':', '_'), ++dbVersion);
-//   request.onsuccess = function(e) {
-// console.log(e.target.result)
-//   };
-//   request.onupgradeneeded = function(e) {
-// console.log(e.target.result)
-//     self.db = e.target.result;
-//     self.db.onerror = onError;
-//     if (!self.db.objectStoreNames.contains(objectStoreName)) {
-//       var store = self.db.createObjectStore(objectStoreName);//, {keyPath: 'id', autoIncrement: true});
-//     }
-//   };
-// };
-
 // TODO: figure out if we should ever call this method. The filesystem API
 // doesn't allow you to delete a filesystem once it is 'created'. Users should
 // use the public remove/removeRecursively API instead.
-idb.drop = function(successCallback, opt_errorCallback) {
+idb_.drop = function(successCallback, opt_errorCallback) {
   if (!this.db) {
     return;
   }
@@ -673,33 +644,35 @@ idb.drop = function(successCallback, opt_errorCallback) {
   request.onsuccess = function(e) {
     successCallback(e);
   };
-  request.onerror = opt_errorCallback;
+  request.onerror = opt_errorCallback || onError;
 
-  idb.close();
+  idb_.close();
 };
 
-idb.get = function(fullPath, successCallback, opt_errorCallback) {
+idb_.get = function(fullPath, successCallback, opt_errorCallback) {
   if (!this.db) {
     return;
   }
 
-  var tx = this.db.transaction([FILE_STORE], IDBTransaction.READ_ONLY);
+  // TODO: use 'readonly' instead. IDBTransaction.READ_ONLY is deprecated.
+  var tx = this.db.transaction([FILE_STORE_], IDBTransaction.READ_ONLY);
 
-  //var request = tx.objectStore(FILE_STORE).get(fullPath);
+  //var request = tx.objectStore(FILE_STORE_).get(fullPath);
   var range = IDBKeyRange.bound(fullPath, fullPath + '0', false, true);
-  var request = tx.objectStore(FILE_STORE).get(range);
+  var request = tx.objectStore(FILE_STORE_).get(range);
   request.onsuccess = function(e) {
     successCallback(e.target.result);
   };
-  request.onerror = opt_errorCallback;
+  request.onerror = opt_errorCallback || onError;
 };
 
-idb.getAllEntries = function(fullPath, successCallback, opt_errorCallback) {
+idb_.getAllEntries = function(fullPath, successCallback, opt_errorCallback) {
   if (!this.db) {
     return;
   }
 
-  var tx = this.db.transaction([FILE_STORE], IDBTransaction.READ_ONLY);
+  // TODO: use 'readonly' instead. IDBTransaction.READ_ONLY is deprecated. 
+  var tx = this.db.transaction([FILE_STORE_], IDBTransaction.READ_ONLY);
 
   var results = [];
 
@@ -710,11 +683,11 @@ idb.getAllEntries = function(fullPath, successCallback, opt_errorCallback) {
   // they match '/'.
   var range = null;
   if (fullPath != '/') {
-//console.log(fullPath + '/', fullPath + '0')
+    //console.log(fullPath + '/', fullPath + '0')
     range = IDBKeyRange.bound(fullPath + '/', fullPath + '0', false, false);
   }
 
-  var request = tx.objectStore(FILE_STORE).openCursor(range);
+  var request = tx.objectStore(FILE_STORE_).openCursor(range);
 
   request.onsuccess = function(e) {
     var cursor = e.target.result;
@@ -746,48 +719,51 @@ idb.getAllEntries = function(fullPath, successCallback, opt_errorCallback) {
       successCallback(results);
     }
   };
-  request.onerror = opt_errorCallback;
+  request.onerror = opt_errorCallback || onError;
 };
 
-idb.delete = function(fullPath, successCallback, opt_errorCallback) {
+idb_.delete = function(fullPath, successCallback, opt_errorCallback) {
   if (!this.db) {
     return;
   }
 
-  var tx = this.db.transaction([FILE_STORE], IDBTransaction.READ_WRITE);
+  // TODO: use 'readwrite' instead. IDBTransaction.READ_WRITE is deprecated.
+  var tx = this.db.transaction([FILE_STORE_], IDBTransaction.READ_WRITE);
 
-  //var request = tx.objectStore(FILE_STORE).delete(fullPath);
+  //var request = tx.objectStore(FILE_STORE_).delete(fullPath);
   var range = IDBKeyRange.bound(fullPath, fullPath + '0', false, true);
-  var request = tx.objectStore(FILE_STORE).delete(range);
+  var request = tx.objectStore(FILE_STORE_).delete(range);
   request.onsuccess = function(e) {
     successCallback(/*e.target.result*/);
   };
-  request.onerror = opt_errorCallback;
+  request.onerror = opt_errorCallback || onError;
 };
 
-idb.put = function(entry, successCallback, opt_errorCallback) {
+idb_.put = function(entry, successCallback, opt_errorCallback) {
   if (!this.db) {
     return;
   }
 
-  var tx = this.db.transaction([FILE_STORE], IDBTransaction.READ_WRITE);
+  // TODO: use 'readwrite' instead. IDBTransaction.READ_WRITE is deprecated.
+  var tx = this.db.transaction([FILE_STORE_], IDBTransaction.READ_WRITE);
 
-  var request = tx.objectStore(FILE_STORE).put(entry, entry.fullPath);
+  var request = tx.objectStore(FILE_STORE_).put(entry, entry.fullPath);
   request.onsuccess = function(e) {
     // TODO: Error is thrown if we pass the request event back instead.
     successCallback(entry);
   };
-  request.onerror = opt_errorCallback;
+  request.onerror = opt_errorCallback || onError;
 };
 
 // Global error handler. Errors bubble from request, to transaction, to db.
 function onError(e) {
   switch (e.target.errorCode) {
     case 12:
-      console.log('Error - Attempt to open database with a lower version than current.');
+      console.log('Error - Attempt to open db with a lower version than the ' +
+                  'current one.');
       break;
     default:
-      console.log('<p>errorCode: ' + e.target.errorCode + '</p>');
+      console.log('errorCode: ' + e.target.errorCode);
   }
 
   console.log(e, e.code, e.message);
@@ -796,10 +772,10 @@ function onError(e) {
 // Clean up.
 // TODO: decide if this is the best place for this. 
 exports.addEventListener('beforeunload', function(e) {
-  idb.db.close();
+  idb_.db.close();
 }, false);
 
-exports.idb = idb;
+//exports.idb = idb_;
 exports.requestFileSystem = requestFileSystem;
 exports.resolveLocalFileSystemURL = resolveLocalFileSystemURL;
 

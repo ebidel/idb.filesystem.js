@@ -20,10 +20,21 @@ body {
   background: radial-gradient(center center, #fff, #eee) no-repeat;
   color: #222;
   overflow-x: hidden;
-  padding: 3em;
+  padding: 2em 3em;
 }
 .dropping {
   background: rgba(255,0,0,0.4);
+}
+h2, h3 {
+  margin: 0;
+}
+hgroup {
+  margin-bottom: 1em;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.5em;
+}
+hgroup a {
+  color: inherit;
 }
 a {
   color: navy;
@@ -35,7 +46,7 @@ a {
   transition: all 0.3s ease-in-out;
 }
 a:hover {
-  color: blue;
+  color: darkred;
 }
 ul, li {
   margin: 0;
