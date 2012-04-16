@@ -1,7 +1,7 @@
 idb.filer.js
 ===========
 
-idb.filer.js is a [well tested](idb.filer.js/tree/master/tests) JavaScript polyfill implementation
+idb.filer.js is a [well tested](//github.com/ebidel/idb.filer.js/tree/master/tests) JavaScript polyfill implementation
 of the HTML5 [Filesystem API][1]. It is intended for browsers that do not
 support the API natively.
 
@@ -23,7 +23,7 @@ which IndexedDB will likely work; I just haven't tested them.
 Using with filer.js
 ------------------
 
-[filer.js](https://github.com/ebidel/filer.js) is a convenience library for the
+[filer.js](//github.com/ebidel/filer.js) is a convenience library for the
 HTML5 Filesystem API. It wraps API calls with familiar UNIX commands
 (`cp`, `mv`, `ls`) for its own API.
 
@@ -35,12 +35,12 @@ do not work, but I haven't tested them.
 Demo
 ===============
 
-Two demo apps are included under [/demo](idb.filer.js/tree/master/demos). The
-[basic demo](http://html5-demos.appspot.com/static/filesystem/idbfiler.js/demos/basic/index.html)
+Two demo apps are included under [/demos](//github.com/ebidel/idb.filer.js/tree/master/demos). The
+[basic demo](http://html5-demos.appspot.com/static/filesystem/idb.filer.js/demos/basic/index.html)
 allows you add files to the app by drag and drop from the desktop. The second demo 
-is a slightly modified version of filer.js's [playground app](http://html5-demos.appspot.com/static/filesystem/idbfiler.js/demos/playground/index.html). What's exciting is that the same app now works in other browsers besides Chrome!
+is a slightly modified version of filer.js's [playground app](http://html5-demos.appspot.com/static/filesystem/idb.filer.js/demos/playground/index.html). What's exciting is that the same app now works in other browsers besides Chrome!
 
-<a href="http://html5-demos.appspot.com/static/filesystem/idbfiler.js/demos/basic/index.html">
+<a href="http://html5-demos.appspot.com/static/filesystem/idb.filer.js/demos/basic/index.html">
   <img src="//github.com/ebidel/idb.filer.js/raw/master/demos/basic/images/demo_screenshot.png" title="Demo app screenshot" alt="Demo app screenshot">
 </a>
 
@@ -55,25 +55,24 @@ Basic example of opening the filesystem and writing to a new .txt file:
     window.BlobBuilder = window.BlobBuilder || window.MozBlobBuilder ||
                          window.WebKitBlobBuilder || window.MSBlobBuilder;
 
-		window.requestFileSystem(TEMPORARY, 1024 * 1024, function(fs) {
-	  	console.log('Opened ' + fs.name);
-
-	  	fs.root.getFile('NewFile.txt', {create: true}, function(fileEntry) {
-		    fileEntry.createWriter(function(fileWriter) {
-
-		      fileWriter.onwritestart = function() {
-		        console.log('WRITE START');
-		      };
-
-		      fileWriter.onwriteend = function() {
-		        console.log('WRITE END');
-		      };
+    window.requestFileSystem(TEMPORARY, 1024 * 1024, function(fs) {
+      console.log('Opened ' + fs.name);
+      
+      fs.root.getFile('NewFile.txt', {create: true}, function(fileEntry) {
+        fileEntry.createWriter(function(fileWriter) {
+          fileWriter.onwritestart = function() {
+            console.log('WRITE START');
+          };
+          
+          fileWriter.onwriteend = function() {
+            console.log('WRITE END');
+          };
 
           var bb = new BlobBuilder();
           bb.append('1234567890');
-
-		      fileWriter.write(bb.getBlob('text/plain'));
-			  }, onError);
-	  }, function(e) {
-	  	console.log('Error', e);
-	  });
+          
+          fileWriter.write(bb.getBlob('text/plain'));
+	}, onError);
+      }, function(e) {
+        console.log('Error', e);
+    });
