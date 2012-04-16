@@ -43,7 +43,7 @@ exports.PERSISTENT = 1;
 // Prevent errors in browsers that don't support FileError.
 // TODO: FF 13+ supports DOM4 Events (DOMError). Use them instead?
 if (exports.FileError === undefined) {
-  var FileError = function() {};
+  window.FileError = function() {};
   FileError.prototype.prototype = Error.prototype;
 }
 
