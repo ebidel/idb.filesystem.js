@@ -35,7 +35,7 @@ do not work, but I haven't tested them.
 Demo
 ===============
 
-Two demo apps are included under [/demo](master/demos). The
+Two demo apps are included under [/demo](idb.filer.js/tree/master/demos). The
 [basic demo](http://html5-demos.appspot.com/static/filesystem/idbfiler.js/demos/basic/index.html)
 allows you add files to the app by drag and drop from the desktop. The second demo 
 is a slightly modified version of filer.js's [playground app](http://html5-demos.appspot.com/static/filesystem/idbfiler.js/demos/playground/index.html). What's exciting is that the same app now works in other browsers besides Chrome!
