@@ -72,7 +72,7 @@ Basic example of opening the filesystem and writing to a new .txt file:
           bb.append('1234567890');
           
           fileWriter.write(bb.getBlob('text/plain'));
-	      }, onError);
+        }, onError);
       }, onError);
     }, onError);
 
