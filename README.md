@@ -1,7 +1,7 @@
-idb.filer.js
+idb.filesystem.js
 ===========
 
-idb.filer.js is a [well tested](//github.com/ebidel/idb.filer.js/tree/master/tests) JavaScript polyfill implementation
+idb.filesystem.js is a [well tested](//github.com/ebidel/idb.filesystem.js/tree/master/tests) JavaScript polyfill implementation
 of the HTML5 [Filesystem API][1]. It is intended for browsers that do not
 support the API natively.
 
@@ -23,13 +23,13 @@ support IndexedDB will likely work; I just haven't tested them.
 Demo
 ===============
 
-Two demo apps are included under [/demos](//github.com/ebidel/idb.filer.js/tree/master/demos). The
-[basic demo](http://html5-demos.appspot.com/static/filesystem/idb.filer.js/demos/basic/index.html)
+Two demo apps are included under [/demos](//github.com/ebidel/idb.filesystem.js/tree/master/demos). The
+[basic demo](http://html5-demos.appspot.com/static/filesystem/idb.filesystem.js/demos/basic/index.html)
 allows you add files to the app by drag and drop from the desktop. The second demo 
-is a slightly modified version of filer.js's [playground app](http://html5-demos.appspot.com/static/filesystem/idb.filer.js/demos/playground/index.html). What's exciting is that the same app now works in other browsers besides Chrome!
+is a slightly modified version of filer.js's [playground app](http://html5-demos.appspot.com/static/filesystem/idb.filesystem.js/demos/playground/index.html). What's exciting is that the same app now works in other browsers besides Chrome!
 
-<a href="http://html5-demos.appspot.com/static/filesystem/idb.filer.js/demos/basic/index.html">
-  <img src="//github.com/ebidel/idb.filer.js/raw/master/demos/basic/images/demo_screenshot.png" title="Demo app screenshot" alt="Demo app screenshot">
+<a href="http://html5-demos.appspot.com/static/filesystem/idb.filesystem.js/demos/basic/index.html">
+  <img src="//github.com/ebidel/idb.filesystem.js/raw/master/demos/basic/images/demo_screenshot.png" title="Demo app screenshot" alt="Demo app screenshot">
 </a>
 
 Getting started
@@ -75,7 +75,7 @@ Using with filer.js
 HTML5 Filesystem API. It wraps API calls with familiar UNIX commands
 (`cp`, `mv`, `ls`) for its own API.
 
-filer.js works well with idb.filer.js, with a few exceptions. Unimplemented
+filer.js works well with idb.filesystem.js, with a few exceptions. Unimplemented
 methods in this library and `filer.open()` (because `filesystem:` URLs are not
 known by unsupported browsers). There may be other API calls in filer.js that
 do not work, but I haven't tested them.
