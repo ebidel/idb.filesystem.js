@@ -52,8 +52,13 @@ FileError.INVALID_MODIFICATION_ERR = 9;
 FileError.NOT_FOUND_ERR  = 1;
 
 function MyFileError(obj) {
-  this.code = obj.code;
+  var code_ = obj.code;
   this.name = obj.name;
+
+  // Required for FF 11.
+  this.__defineSetter__('code', function(code) {
+    code_ = code;
+  });
 }
 MyFileError.prototype = FileError.prototype;
 MyFileError.prototype.toString = Error.prototype.toString;

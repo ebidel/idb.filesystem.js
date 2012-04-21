@@ -12,7 +12,7 @@ All you need to do is make Filesystem API calls, and the rest is magic.
 Supported Browsers
 ------------------
 
-* Firefox 14a1+
+* Firefox 11+
 
 Unlisted browsers and/or versions (e.g. earlier versions of Firefox) that
 support IndexedDB will likely work; I just haven't tested them.
