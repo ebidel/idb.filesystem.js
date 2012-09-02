@@ -22,7 +22,7 @@
  * "/one/two/" comes before "/one/two/ANYTHING" comes before "/one/two/0".
  *
  * @author Eric Bidelman (ebidel@gmail.com)
- * @version: 0.0.1
+ * @version: 0.0.2
  */
 
 'use strict';
@@ -34,8 +34,8 @@ if (exports.requestFileSystem || exports.webkitRequestFileSystem) {
   return;
 }
 
-exports.indexedDB = exports.indexedDB || exports.mozIndexedDB ||
-                    exports.msIndexedDB;
+var indexedDB = exports.indexedDB || exports.mozIndexedDB ||
+                exports.msIndexedDB;
 exports.BlobBuilder = exports.BlobBuilder || exports.MozBlobBuilder ||
                       exports.MSBlobBuilder;
 exports.TEMPORARY = 0;
@@ -82,9 +82,6 @@ var FILE_STORE_ = 'entries';
 
 var DIR_SEPARATOR = '/';
 var DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1);
-
-var READ_ONLY = IDBTransaction.READ_ONLY || 'readonly';
-var READ_WRITE = IDBTransaction.READ_WRITE || 'readwrite';
 
 // When saving an entry, the fullPath should always lead with a slash and never
 // end with one (e.g. a directory). Also, resolve '.' and '..' to an absolute
@@ -610,7 +607,7 @@ idb_.open = function(dbName, successCallback, opt_errorCallback) {
   var self = this;
 
   // TODO: FF 12.0a1 isn't liking a db name with : in it.
-  var request = exports.indexedDB.open(dbName.replace(':', '_')/*, 1 /*version*/);
+  var request = indexedDB.open(dbName.replace(':', '_')/*, 1 /*version*/);
 
   request.onerror = opt_errorCallback || onError;
 
@@ -652,7 +649,7 @@ idb_.drop = function(successCallback, opt_errorCallback) {
 
   var dbName = this.db.name;
 
-  var request = exports.indexedDB.deleteDatabase(dbName);
+  var request = indexedDB.deleteDatabase(dbName);
   request.onsuccess = function(e) {
     successCallback(e);
   };
@@ -666,7 +663,7 @@ idb_.get = function(fullPath, successCallback, opt_errorCallback) {
     return;
   }
 
-  var tx = this.db.transaction([FILE_STORE_], READ_ONLY);
+  var tx = this.db.transaction([FILE_STORE_], 'readonly');
 
   //var request = tx.objectStore(FILE_STORE_).get(fullPath);
   var range = IDBKeyRange.bound(fullPath, fullPath + DIR_OPEN_BOUND,
@@ -698,7 +695,7 @@ idb_.getAllEntries = function(fullPath, successCallback, opt_errorCallback) {
         fullPath + DIR_SEPARATOR, fullPath + DIR_OPEN_BOUND, false, true);
   }
 
-  var tx = this.db.transaction([FILE_STORE_], READ_ONLY);
+  var tx = this.db.transaction([FILE_STORE_], 'readonly');
   tx.onabort = opt_errorCallback || onError;
   tx.oncomplete = function(e) {
     // TODO: figure out how to do be range queries instead of filtering result
@@ -741,7 +738,7 @@ idb_.delete = function(fullPath, successCallback, opt_errorCallback) {
     return;
   }
 
-  var tx = this.db.transaction([FILE_STORE_], READ_WRITE);
+  var tx = this.db.transaction([FILE_STORE_], 'readwrite');
   tx.oncomplete = successCallback;
   tx.onabort = opt_errorCallback || onError;
 
@@ -756,7 +753,7 @@ idb_.put = function(entry, successCallback, opt_errorCallback) {
     return;
   }
 
-  var tx = this.db.transaction([FILE_STORE_], READ_WRITE);
+  var tx = this.db.transaction([FILE_STORE_], 'readwrite');
   tx.onabort = opt_errorCallback || onError;
   tx.oncomplete = function(e) {
     // TODO: Error is thrown if we pass the request event back instead.

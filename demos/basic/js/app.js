@@ -17,14 +17,14 @@ function onError(e) {
 }
 
 function clearFS() {
-	fs.root.createReader().readEntries(function(results) {
-	  [].forEach.call(results, function(entry) {
-		  if (entry.isDirectory) {
-			  entry.removeRecursively(function() {}, onError);
-			} else {
-				entry.remove(function() {}, onError);
-			}
-		});
+  fs.root.createReader().readEntries(function(results) {
+    [].forEach.call(results, function(entry) {
+      if (entry.isDirectory) {
+        entry.removeRecursively(function() {}, onError);
+      } else {
+        entry.remove(function() {}, onError);
+      }
+    });
     getAllEntries(fs.root);
   }, onError);
 
@@ -35,13 +35,13 @@ function clearFS() {
 
 function openFS() {
   window.requestFileSystem(TEMPORARY, 1024*1024, function(myFs) {
-  	fs = myFs;
+    fs = myFs;
     cwd = fs.root;
-  	openFSButton.disabled = true;
-  	logger.log('<p>Opened <em>' + fs.name, + '</em></p>');
-  	getAllEntries(fs.root);
+    openFSButton.disabled = true;
+    logger.log('<p>Opened <em>' + fs.name, + '</em></p>');
+    getAllEntries(fs.root);
   }, function(e) {
-  	logger.log(e);
+    logger.log(e);
   });
 }
 
@@ -55,23 +55,23 @@ function writeFile(file, i) {
         console.log('WRITE END');
       };
       fileWriter.write(file);
-	  }, onError);
+    }, onError);
 
     getAllEntries(cwd);
   }, onError);
 }
 
 function getAllEntries(dirEntry) {
-	dirEntry.createReader().readEntries(function(results) {
+  dirEntry.createReader().readEntries(function(results) {
     html = [];
     // var paths = results.map(function(el) { return el.fullPath.substring(1); });
     // renderFromPathObj(buildFromPathList(paths));
     // document.querySelector('#entries2').innerHTML = html.join('');
 
-		var frag = document.createDocumentFragment();
-		// Native readEntries() returns an EntryArray, which doesn't have forEach.
-		[].forEach.call(results, function(entry) {
-  	  var li = document.createElement('li');
+    var frag = document.createDocumentFragment();
+    // Native readEntries() returns an EntryArray, which doesn't have forEach.
+    [].forEach.call(results, function(entry) {
+      var li = document.createElement('li');
       li.dataset.type = entry.isFile ? 'file' : 'folder';
       
       var deleteLink = document.createElement('a');
@@ -98,9 +98,9 @@ function getAllEntries(dirEntry) {
       var span = document.createElement('span');
       span.appendChild(deleteLink);
 
-  	  if (entry.isFile) {
+      if (entry.isFile) {
 
-  	    entry.file(function(f) {
+        entry.file(function(f) {
           var size = Math.round(f.size * 100 / (1024 * 1024)) / 100;
           span.title = size + 'MB';
 
@@ -109,30 +109,30 @@ function getAllEntries(dirEntry) {
             span.title = size + 'KB';
           }
 
-  	      if (f.type.match('audio/') || f.type.match('video/ogg')) {
+          if (f.type.match('audio/') || f.type.match('video/ogg')) {
 
             var audio = new Audio();
 
             if (audio.canPlayType(f.type)) {
-            	audio.src = window.URL.createObjectURL(f);
-  	      	  //audio.type = f.type;
-  	      	  //audio.controls = true;
-  	      	  audio.onended = function(e) {
-  	            window.URL.revokeObjectURL(this.src);
-  	          };
+              audio.src = window.URL.createObjectURL(f);
+              //audio.type = f.type;
+              //audio.controls = true;
+              audio.onended = function(e) {
+                window.URL.revokeObjectURL(this.src);
+              };
 
-  	      	  var a = document.createElement('a');
-  	      	  a.href = '';
+              var a = document.createElement('a');
+              a.href = '';
               a.dataset.fullPath = entry.fullPath;
-  	      	  a.textContent = entry.fullPath;
-  	      	  a.appendChild(audio);
-  	      	  a.onclick = playPauseAudio;
+              a.textContent = entry.fullPath;
+              a.appendChild(audio);
+              a.onclick = playPauseAudio;
 
               span.appendChild(a);
-	  	      } else {
+            } else {
               span.appendChild(document.createTextNode(entry.fullPath + " (can't play)"));
-	  	      }
-  	      } else {
+            }
+          } else {
             var a = document.createElement('a');
             a.href = '';
             a.textContent = entry.fullPath;
@@ -173,8 +173,8 @@ function getAllEntries(dirEntry) {
           span.appendChild(img);*/
 
           li.appendChild(span);
-	      }, onError);
-  	  } else {
+        }, onError);
+      } else {
         var span2 = document.createElement('span');
 
         var folderLink = document.createElement('a');
@@ -190,7 +190,7 @@ function getAllEntries(dirEntry) {
         };
 
         span2.appendChild(folderLink);
-  	    span.appendChild(span2);
+        span.appendChild(span2);
         span.classList.add('bold');
         var img = document.createElement('img');
         img.src = 'images/icons/folder.png';
@@ -200,13 +200,13 @@ function getAllEntries(dirEntry) {
         span.appendChild(img);
 
         li.appendChild(span);
-  	  }
-  	  frag.appendChild(li);
-  	});
+      }
+      frag.appendChild(li);
+    });
 
-  	var entries = document.querySelector('#entries');
-  	entries.innerHTML = '<ul></ul>';
-  	entries.appendChild(frag);
+    var entries = document.querySelector('#entries');
+    entries.innerHTML = '<ul></ul>';
+    entries.appendChild(frag);
 
   }, onError);
 }
