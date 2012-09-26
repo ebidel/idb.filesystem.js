@@ -234,9 +234,13 @@ FileWriter.prototype = {
   seek: function(offset) {
     this.position_ = offset
 
-    if(offset > this.length_)
-      this.write(new Blob([this.fileEntry_.file_.blob_,
-                            ArrayBuffer(offset - this.length_)]))
+    if(this.position_ > this.length_)
+      this.position_ = this.length_
+    else if(this.position_ < 0)
+      this.position_ += this.length_
+
+    if(this.position_ < 0)
+      this.position_ = 0
   },
   truncate: function(size) {
     var blob;
