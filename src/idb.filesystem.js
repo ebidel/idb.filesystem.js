@@ -232,7 +232,11 @@ function FileWriter(fileEntry) {
 
 FileWriter.prototype = {
   seek: function(offset) {
-    throw NOT_IMPLEMENTED_ERR;
+    this.position_ = offset
+
+    if(offset > this.length_)
+      this.write(new Blob([this.fileEntry_.file_.blob_,
+                            ArrayBuffer(offset - this.length_)]))
   },
   truncate: function(size) {
     var blob;
