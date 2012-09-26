@@ -235,8 +235,15 @@ FileWriter.prototype = {
     throw NOT_IMPLEMENTED_ERR;
   },
   truncate: function(size) {
-    this.onwriteend();
-    throw NOT_IMPLEMENTED_ERR;
+    var blob;
+
+    if(size < this.length_)
+      blob = this.fileEntry_.file_.blob_.slice(size)
+    else
+      blob = new Blob([this.fileEntry_.file_.blob_,
+                       ArrayBuffer(size - this.length_)])
+
+    this.write(blob)
   }
 }
 
