@@ -188,80 +188,76 @@ MyFile.prototype.constructor = MyFile;
  * @param {FileEntry} fileEntry The FileEntry associated with this writer.
  * @constructor
  */
-function FileWriter(fileEntry)
-{
+function FileWriter(fileEntry) {
   if(!fileEntry)
       throw Error('Expected fileEntry argument to write.');
 
   var position_ = 0;
   var blob_ = fileEntry.file_.blob_;
 
-
-  this.__defineGetter__('position', function()
-  {
+  this.__defineGetter__('position', function() {
     return position_;
   });
 
-  this.__defineGetter__('length', function()
-  {
+  this.__defineGetter__('length', function() {
     return blob_.size;
   });
 
-
-  this.seek = function(offset)
-  {
-    position_ = offset
+  this.seek = function(offset) {
+    position_ = offset;
 
     if(position_ > this.length)
-       position_ = this.length
+      position_ = this.length;
     else if(position_ < 0)
-       position_ += this.length
+      position_ += this.length;
 
     if(position_ < 0)
-       position_ = 0
+      position_ = 0;
   };
 
-  this.truncate = function(size)
-  {
+  this.truncate = function(size) {
     if(size < this.length)
-      blob_ = blob_.slice(size)
-    else
-      blob_ = new Blob([blob_, new UInt8Array(size - this.length)],
-                        {"type": blob_.type})
+      blob_ = blob_.slice(size);
+    else {
+      var properties = {
+        type: blob_.type
+      };
+      blob_ = new Blob([blob_, new UInt8Array(size - this.length)], properties);
+    }
   };
 
-  this.write = function(data)
-  {
+  this.write = function(data) {
     if(!data)
       return;
 
     // Call onwritestart if it was defined.
     if(this.onwritestart)
-       this.onwritestart();
+      this.onwritestart();
 
     // TODO: not handling onprogress, onwrite, onabort. Throw an error if
     // they're defined.
 
     // Calc the head and tail fragments
-    var head = blob_.slice(0, position_)
-    var tail = blob_.slice(position_ + data.length)
+    var head = blob_.slice(0, position_);
+    var tail = blob_.slice(position_ + data.length);
 
     // Calc the padding
-    var padding = position_ - head.size
+    var padding = position_ - head.size;
     if(padding < 0)
        padding = 0;
 
     // Do the "write" --in fact, a full overwrite of the Blob
-    blob_ = new Blob([head, new Uint8Array(padding), data, tail],
-                      {"type": blob_.type})
+    var properties = {
+      type: blob_.type
+    };
+    blob_ = new Blob([head, new Uint8Array(padding), data, tail], properties);
 
     var self = this;
 
     // Set the blob we're writing on this file entry so we can recall it later.
     fileEntry.file_.blob_ = blob_;
 
-    idb_.put(fileEntry, function(entry)
-    {
+    idb_.put(fileEntry, function(entry) {
       // Set writer.position == write.length.
       position_ += data.size;
 
