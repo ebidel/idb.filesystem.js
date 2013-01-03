@@ -50,13 +50,14 @@ Other:
   <img src="images/icons/favicon.png" alt="HTML5 Filesystem Playground" title="HTML5 Filesystem Playground">
   <h1>HTML5 <a href="http://www.html5rocks.com/tutorials/file/filesystem/" target="_blank">Filesystem</a> Playground</h1>
   <div>
-    <span><input type="checkbox" onclick="toggleLog()" id="toggle-log"><label for="toggle-log">Show log</label></span>
+    <span><input type="checkbox" onclick="toggleLog()" id="toggle-log">
+      <label for="toggle-log">Show log</label>
+    </span>
     <span>Display as: <a href="javascript:" data-display-type="list" onclick="display(this, 'list')">list</a> / <a href="javascript:" data-display-type="icons" onclick="display(this, 'large')" class="active">icons</a></span>
     <span>
       <!--<input type="file" class="button" webkitdirectory mozdirectory disabled alt="Import directory into the current folder" title="Import directory into the current folder">-->
       <input type="file" id="fileElem" multiple directory webkitdirectory mozdirectory>
       <button id="importButton" alt="Import directory into the current folder" title="Import directory into the current folder" disabled>Import directory</button>
-    </span>
     </span>
     <span>
       <input type="text" id="entry-name" placeholder="test.txt / foldername"/>
