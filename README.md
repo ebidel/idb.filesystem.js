@@ -40,9 +40,6 @@ on the Filesystem API.**
 
 Basic example of opening the filesystem and writing to a new .txt file:
 
-    window.BlobBuilder = window.BlobBuilder || window.MozBlobBuilder ||
-                         window.WebKitBlobBuilder || window.MSBlobBuilder;
-
     window.requestFileSystem(TEMPORARY, 1024 * 1024, function(fs) {
       console.log('Opened ' + fs.name);
       
@@ -56,10 +53,9 @@ Basic example of opening the filesystem and writing to a new .txt file:
             console.log('WRITE END');
           };
 
-          var bb = new BlobBuilder();
-          bb.append('1234567890');
-          
-          fileWriter.write(bb.getBlob('text/plain'));
+          var blob = new Blob(['1234567890'], {type: 'text/plain'});
+        
+          fileWriter.write(blob);
         }, onError);
       }, onError);
     }, onError);
