@@ -1,5 +1,5 @@
 /** 
- * Copyright 2012 - Eric Bidelman
+ * Copyright 2013 - Eric Bidelman
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
  * "/one/two/" comes before "/one/two/ANYTHING" comes before "/one/two/0".
  *
  * @author Eric Bidelman (ebidel@gmail.com)
- * @version: 0.0.2
+ * @version: 0.0.3
  */
 
 'use strict';
@@ -36,8 +36,6 @@ if (exports.requestFileSystem || exports.webkitRequestFileSystem) {
 
 var indexedDB = exports.indexedDB || exports.mozIndexedDB ||
                 exports.msIndexedDB;
-exports.BlobBuilder = exports.BlobBuilder || exports.MozBlobBuilder ||
-                      exports.MSBlobBuilder;
 exports.TEMPORARY = 0;
 exports.PERSISTENT = 1;
 
@@ -156,7 +154,6 @@ function resolveToFullPath_(cwdFullPath, path) {
  */
 function MyFile(opts) {
   var blob_ = null;
-  var self_ = this;
 
   this.size = opts.size || 0;
   this.name = opts.name || '';
@@ -171,10 +168,10 @@ function MyFile(opts) {
   // blob that is saved.
   this.__defineSetter__('blob_', function(val) {
     blob_ = val;
-    self_.size = blob_.size;
-    self_.name = blob_.name;
-    self_.type = blob_.type;
-  });
+    this.size = blob_.size;
+    this.name = blob_.name;
+    this.type = blob_.type;
+  }.bind(this));
 }
 MyFile.prototype.constructor = MyFile; 
 //MyFile.prototype.slice = Blob.prototype.slice;
@@ -189,81 +186,91 @@ MyFile.prototype.constructor = MyFile;
  * @constructor
  */
 function FileWriter(fileEntry) {
-  if(!fileEntry)
-      throw Error('Expected fileEntry argument to write.');
+  if (!fileEntry) {
+    throw Error('Expected fileEntry argument to write.');
+  }
 
   var position_ = 0;
-  var blob_ = fileEntry.file_.blob_;
+  var blob_ = fileEntry.file_ ? fileEntry.file_.blob_ : null;
 
   this.__defineGetter__('position', function() {
     return position_;
   });
 
   this.__defineGetter__('length', function() {
-    return blob_.size;
+    return blob_ ? blob_.size : 0;
   });
 
   this.seek = function(offset) {
     position_ = offset;
 
-    if(position_ > this.length)
+    if (position_ > this.length) {
       position_ = this.length;
-    else if(position_ < 0)
+    }
+    if (position_ < 0) {
       position_ += this.length;
-
-    if(position_ < 0)
+    }
+    if (position_ < 0) {
       position_ = 0;
-  };
-
-  this.truncate = function(size) {
-    if(size < this.length)
-      blob_ = blob_.slice(size);
-    else {
-      var properties = {
-        type: blob_.type
-      };
-      blob_ = new Blob([blob_, new UInt8Array(size - this.length)], properties);
     }
   };
 
+  this.truncate = function(size) {
+    if (size < this.length) {
+      blob_ = blob_.slice(0, size);
+    } else {
+      blob_ = new Blob([blob_, new Uint8Array(size - this.length)],
+                       {type: blob_.type});
+    }
+
+    position_ = 0; // truncate from beginning of file.
+
+    this.write(blob_); // calls onwritestart and onwriteend.
+  };
+
   this.write = function(data) {
-    if(!data)
-      return;
+    if (!data) {
+      throw Error('Expected blob argument to write.');
+    }
 
     // Call onwritestart if it was defined.
-    if(this.onwritestart)
+    if (this.onwritestart) {
       this.onwritestart();
+    }
 
     // TODO: not handling onprogress, onwrite, onabort. Throw an error if
     // they're defined.
 
-    // Calc the head and tail fragments
-    var head = blob_.slice(0, position_);
-    var tail = blob_.slice(position_ + data.length);
+    if (!blob_) {
+      blob_ = new Blob([data], {type: data.type});
+    } else {
+      // Calc the head and tail fragments
+      var head = blob_.slice(0, position_);
+      var tail = blob_.slice(position_ + data.size);
 
-    // Calc the padding
-    var padding = position_ - head.size;
-    if(padding < 0)
-       padding = 0;
+      // Calc the padding
+      var padding = position_ - head.size;
+      if (padding < 0) {
+        padding = 0;
+      }
 
-    // Do the "write" --in fact, a full overwrite of the Blob
-    var properties = {
-      type: blob_.type
-    };
-    blob_ = new Blob([head, new Uint8Array(padding), data, tail], properties);
-
-    var self = this;
+      // Do the "write". In fact, a full overwrite of the Blob.
+      // TODO: figure out if data.type should overwrite the exist blob's type.
+      blob_ = new Blob([head, new Uint8Array(padding), data, tail],
+                       {type: blob_.type});
+    }
 
     // Set the blob we're writing on this file entry so we can recall it later.
     fileEntry.file_.blob_ = blob_;
 
     idb_.put(fileEntry, function(entry) {
-      // Set writer.position == write.length.
+      // Add size of data written to writer.position.
       position_ += data.size;
 
-      if(self.onwriteend)
-        self.onwriteend();
-    }, this.onerror);
+      if (this.onwriteend) {
+        this.onwriteend();
+      }
+    }.bind(this), this.onerror);
   };
 }
 

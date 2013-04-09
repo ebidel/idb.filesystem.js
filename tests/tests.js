@@ -27,7 +27,7 @@ module('window methods', {
 
 module('helpers', {
   setup: function() {
-    
+
   },
   teardown: function() {
 
@@ -399,7 +399,21 @@ test('file()', 4, function() {
   }, onError);
 });
 
-test('FileWriter', 16, function() {
+module('FileWriter', {
+  setup: function() {
+    var self = this;
+    stop();
+    window.requestFileSystem(TEMPORARY, 1024*1024, function(fs) {
+      self.fs = fs;
+      start();
+    }, onError);
+  },
+  teardown: function() {
+
+  }
+});
+
+test('write()', 18, function() {
   var fs = this.fs;
   var entry = fs.root;
   var FILE_NAME = 'idb_test_file_name_writer' + Date.now();
@@ -446,7 +460,7 @@ test('FileWriter', 16, function() {
         equal(this.length, BLOB_DATA.length, '.length is correct after write');
 
         fileEntry.file(function(file) {
-          equal(file.type, MIMETYPE, 'file.type initially blank');
+          equal(file.type, MIMETYPE, 'file.type correctly set');
           equal(file.size, writer.length, 'file.size == writer.length');
           fileEntry.remove(function() {
             start();
@@ -460,10 +474,153 @@ test('FileWriter', 16, function() {
         equal(file.name, FILE_NAME, 'filename == ' + FILE_NAME);
 
         // Run the writes after this async function does its thing.
-        var bb = new BlobBuilder();
-        bb.append(BLOB_DATA);
-        writer.write(bb.getBlob(MIMETYPE));
+        var blob = new Blob([BLOB_DATA], {type: MIMETYPE});
+        writer.write(blob);
       });
+    });
+  }, onError);
+
+  // Test reusing a FileWriter.
+  stop();
+  var FILE_NAME2 = FILE_NAME + '_2';
+  entry.getFile(FILE_NAME2, {create: true}, function(fileEntry) {
+    fileEntry.createWriter(function(writer) {
+
+      writer.onwriteend = function() {
+        writer.onwriteend = function() {
+          fileEntry.file(function(file) {
+            equal(file.size, 2 * BLOB_DATA.length, 'file.size is correct');
+            equal(writer.length, 2 * BLOB_DATA.length, 'file.size == writer.length');
+            fileEntry.remove(function() {
+              start();
+            });
+          });
+        };
+
+        // Append more data.
+        var blob = new Blob([BLOB_DATA]);
+        writer.write(blob);
+      };
+
+      var blob = new Blob([BLOB_DATA], {type: MIMETYPE});
+      writer.write(blob);
+    });
+  }, onError);
+
+});
+
+test('truncate()', 5, function() {
+  var fs = this.fs;
+  var entry = fs.root;
+  var FILE_NAME = 'idb_test_file_name_truncate' + Date.now();
+  var BLOB_DATA = '123';
+  var MIMETYPE = 'text/plain';
+  var SIZE = 1;
+
+  stop();
+  entry.getFile(FILE_NAME, {create: true}, function(fileEntry) {
+    fileEntry.createWriter(function(writer) {
+
+      writer.onwritestart = function() {
+        ok(true, 'onwritestart fired on truncate()');
+      }
+
+      writer.onwriteend = function() {
+        writer.onwritestart = null;
+        writer.onwriteend = function() {
+          fileEntry.file(function(file) {
+            equal(writer.length, SIZE, 'writer.length == SIZE after truncate()');
+            equal(file.size, SIZE, 'file.size is correct after truncate()');
+            fileEntry.remove(function() {
+              start();
+            });
+          });
+        };
+        writer.truncate(SIZE);
+      };
+
+      var blob = new Blob([BLOB_DATA], {type: MIMETYPE});
+      writer.write(blob);
+    });
+  }, onError);
+
+  stop();
+  var FILE_NAME2 = FILE_NAME + '_2';
+  SIZE = BLOB_DATA.length * 2;
+  entry.getFile(FILE_NAME2, {create: true}, function(fileEntry) {
+    fileEntry.createWriter(function(writer) {
+
+      writer.onwriteend = function() {
+        writer.onwriteend = function() {
+          fileEntry.file(function(file) {
+            equal(writer.length, SIZE, 'writer.length == SIZE after truncate() padding');
+            equal(file.size, SIZE, 'file.size is correct after truncate() padding');
+            fileEntry.remove(function() {
+              start();
+            });
+          });
+        };
+        writer.truncate(SIZE);
+      };
+
+      var blob = new Blob([BLOB_DATA], {type: MIMETYPE});
+      writer.write(blob);
+    });
+  }, onError);
+
+});
+
+test('seek()', 4, function() {
+  var fs = this.fs;
+  var entry = fs.root;
+  var FILE_NAME = 'idb_test_file_name_seek' + Date.now();
+  var BLOB_DATA = '123';
+  var MIMETYPE = 'text/plain';
+
+  stop();
+  entry.getFile(FILE_NAME, {create: true}, function(fileEntry) {
+    fileEntry.createWriter(function(writer) {
+
+      writer.onwriteend = function() {
+        writer.onwriteend = function() {
+          fileEntry.file(function(file) {
+            equal(writer.length, BLOB_DATA.length, 'Length did not increase after seek(0).');
+            equal(file.size, BLOB_DATA.length, 'file.size did not increase after seek(0) .');
+            fileEntry.remove(function() {
+              start();
+            });
+          });
+        };
+        writer.seek(0);
+        writer.write(blob);
+      };
+
+      var blob = new Blob([BLOB_DATA], {type: MIMETYPE});
+      writer.write(blob);
+    });
+  }, onError);
+
+  stop();
+  var FILE_NAME2 = FILE_NAME + '_2';
+  entry.getFile(FILE_NAME2, {create: true}, function(fileEntry) {
+    fileEntry.createWriter(function(writer) {
+
+      writer.onwriteend = function() {
+        writer.onwriteend = function() {
+          fileEntry.file(function(file) {
+            equal(writer.length, BLOB_DATA.length * 2 - 1, 'length correct after seek(-1).');
+            equal(file.size, BLOB_DATA.length * 2 - 1, 'file.size correct after seek(-1) .');
+            fileEntry.remove(function() {
+              start();
+            });
+          });
+        };
+        writer.seek(-1);
+        writer.write(blob);
+      };
+
+      var blob = new Blob([BLOB_DATA], {type: MIMETYPE});
+      writer.write(blob);
     });
   }, onError);
 });
