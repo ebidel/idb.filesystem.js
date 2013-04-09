@@ -29,7 +29,7 @@ allows you add files to the app by drag and drop from the desktop. The second de
 is a slightly modified version of filer.js's [playground app](http://html5-demos.appspot.com/static/filesystem/idb.filesystem.js/demos/playground/index.html). What's exciting is that the same app now works in other browsers besides Chrome!
 
 <a href="http://html5-demos.appspot.com/static/filesystem/idb.filesystem.js/demos/basic/index.html">
-  <img src="//github.com/ebidel/idb.filesystem.js/raw/master/demos/basic/images/demo_screenshot.png" title="Demo app screenshot" alt="Demo app screenshot">
+  <img src="https://raw.github.com/ebidel/idb.filesystem.js/master/demos/playground/images/demo_screenshot.png" title="Demo app screenshot" alt="Demo app screenshot">
 </a>
 
 Getting started
