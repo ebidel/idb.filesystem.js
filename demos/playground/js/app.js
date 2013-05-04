@@ -37,6 +37,18 @@ var fileDirInput = document.querySelector('input[type="file"]');
 var createButton = document.querySelector('#createButton');
 var ticker = document.querySelector('#ticker');
 
+function toURL(entry) {
+  // Can't polyfill opening filesystem: URLs, so create a blob: URL instead.
+  // TODO(ericbidelman): cleanup URLs created using revokeObjectUR().
+  if (entry.isFile && entry.file_.blob_) {
+    var blob = entry.file_.blob_;
+  } else {
+    var blob = new Blob([]);
+  }
+
+  return window.URL.createObjectURL(blob);
+}
+
 function createNewEntry() {
   var type = document.querySelector('#entry-type').value;
   var name = document.querySelector('#entry-name').value;
@@ -118,7 +130,7 @@ function constructEntryHTML(entry, i) {
 
   if (entry.isFile) {
     html.push('<a href="javascript:" data-preview-link onclick="readFile(', i, ')"><img src="images/icons/library.png" class="icon" title="Preview file" alt="Preview file"></a>');
-    html.push('<a href="', entry.toURL(), '" download><img src="images/icons/download.png" class="icon" title="Download" alt="Download"></a>');
+    html.push('<a href="', toURL(entry), '" download><img src="images/icons/download.png" class="icon" title="Download" alt="Download"></a>');
   }
 
   html.push('<a href="javascript:" data-remove-link onclick="remove(this,', i, ');"><img src="images/icons/trash_empty.png" class="icon" title="Remove" alt="Remove"></a>');
@@ -249,7 +261,7 @@ function cd(i, opt_callback) {
 
 function openFile(i) {
   errors.textContent = ''; // Reset errors.
-  var fileWin = self.open(entries[i].toURL(), 'fileWin');
+  var fileWin = self.open(toURL(entries[i]), 'fileWin');
 }
 
 function newFile(name) {
@@ -292,7 +304,7 @@ function rename(el, i) {
     // Fill download link with updated filsystem URL.
     var downloadLink = el.parentElement.querySelector('[download]');
     if (downloadLink) {
-      downloadLink.href = entry.toURL();
+      downloadLink.href = toURL(entry);
     }
   });
   toggleContentEditable(el);
@@ -350,7 +362,7 @@ function readFile(i) {
       if (file.type.match(/audio.*/)) {
         var player = document.createElement('audio');
         player.controls = true;
-        player.src = entry.toURL();
+        player.src = toURL(entry);
 
         filePreview.appendChild(player);
 
@@ -361,14 +373,14 @@ function readFile(i) {
                  file.type.match(/application\/pdf/)) {
 
         var iframe = document.createElement('iframe');
-        iframe.src = entry.toURL();
+        iframe.src = toURL(entry);
 
         filePreview.appendChild(iframe);
 
       } else if (file.type.match(/image.*/)) {
 
         var img = document.createElement('img');
-        img.src = entry.toURL();
+        img.src = toURL(entry);
 
         filePreview.appendChild(img);
 
