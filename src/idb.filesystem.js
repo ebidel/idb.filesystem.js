@@ -53,18 +53,23 @@ function MyFileError(obj) {
   var code_ = obj.code;
   var name_ = obj.name;
 
-  // Required for FF.
-  this.__defineGetter__('code', function(name) {
-    return code_;
+    // Required for FF 11.
+  Object.defineProperty(this, 'code', {
+    set: function (code) {
+      code_ = code;
+    },
+    get: function() {
+      return code_;
+    }
   });
-  this.__defineSetter__('code', function(code) {
-    code_ = code;
-  });
-  this.__defineGetter__('name', function(name) {
-    return name_;
-  });
-  this.__defineSetter__('name', function(name) {
-    name_ = name;
+
+  Object.defineProperty(this, 'name', {
+    set: function (name) {
+      name_ = name;
+    },
+    get: function() {
+      return name_;
+    }
   });
 }
 MyFileError.prototype = FileError.prototype;
@@ -170,19 +175,22 @@ function MyFile(opts) {
   this.lastModifiedDate = opts.lastModifiedDate || null;
   //this.slice = Blob.prototype.slice; // Doesn't work with structured clones.
 
-  this.__defineGetter__('blob_', function() {
-    return blob_;
+  Object.defineProperty(this, 'blob_', {
+    get: function () {
+      return blob_;
+    }
   });
 
   // Need some black magic to correct the object's size/name/type based on the
   // blob that is saved.
-  this.__defineSetter__('blob_', function(val) {
-    blob_ = val;
-    this.size = blob_.size;
-    this.name = blob_.name;
-    this.type = blob_.type;
-    this.lastModifiedDate = blob_.lastModifiedDate;
-  }.bind(this));
+  Object.defineProperty(this, 'blob_', {
+    set: function (code) {
+      blob_ = val;
+      this.size = blob_.size;
+      this.name = blob_.name;
+      this.type = blob_.type;
+    }.bind(this)
+  });
 }
 MyFile.prototype.constructor = MyFile; 
 //MyFile.prototype.slice = Blob.prototype.slice;
@@ -204,12 +212,16 @@ function FileWriter(fileEntry) {
   var position_ = 0;
   var blob_ = fileEntry.file_ ? fileEntry.file_.blob_ : null;
 
-  this.__defineGetter__('position', function() {
-    return position_;
+  Object.defineProperty(this, 'position', {
+    get: function () {
+      return position_;
+    }
   });
 
-  this.__defineGetter__('length', function() {
-    return blob_ ? blob_.size : 0;
+  Object.defineProperty(this, 'length', {
+    get: function () {
+      return blob_ ? blob_.size : 0;
+    }
   });
 
   this.seek = function(offset) {
@@ -420,20 +432,25 @@ Entry.prototype = {
 function FileEntry(opt_fileEntry) {
   var file_ = null;
 
-  this.__defineGetter__('file_', function() {
-    return file_;
+  Object.defineProperty(this, 'file_', {
+    get: function () {
+      return file_;
+    },
+    set: function (val) {
+      file_ = val;
+    }
   });
 
-  this.__defineSetter__('file_', function(val) {
-    file_ = val;
+  Object.defineProperty(this, 'isFile', {
+    get: function () {
+      return true;
+    }
   });
 
-  this.__defineGetter__('isFile', function() {
-    return true;
-  });
-
-  this.__defineGetter__('isDirectory', function() {
-    return false;
+  Object.defineProperty(this, 'isDirectory', {
+    get: function () {
+      return false;
+    }
   });
 
   // Create this entry from properties from an existing FileEntry.
@@ -490,12 +507,16 @@ FileEntry.prototype.file = function(successCallback, opt_errorCallback) {
  * @extends {Entry}
  */
 function DirectoryEntry(opt_folderEntry) {
-  this.__defineGetter__('isFile', function() {
-    return false;
+  Object.defineProperty(this, 'isFile', {
+    get: function () {
+      return false;
+    }
   });
 
-  this.__defineGetter__('isDirectory', function() {
-    return true;
+  Object.defineProperty(this, 'isDirectory', {
+    get: function () {
+      return true;
+    }
   });
 
   // Create this entry from properties from an existing DirectoryEntry.
