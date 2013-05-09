@@ -162,16 +162,13 @@ function MyFile(opts) {
   this.type = opts.type || '';
   //this.slice = Blob.prototype.slice; // Doesn't work with structured clones.
 
-  Object.defineProperty(this, 'blob_', {
-    get: function () {
-      return blob_;
-    }
-  });
-
   // Need some black magic to correct the object's size/name/type based on the
   // blob that is saved.
   Object.defineProperty(this, 'blob_', {
-    set: function (code) {
+    get: function () {
+      return blob_;
+    },
+    set: function (val) {
       blob_ = val;
       this.size = blob_.size;
       this.name = blob_.name;
@@ -386,18 +383,6 @@ function FileEntry(opt_fileEntry) {
     }
   });
 
-  Object.defineProperty(this, 'isFile', {
-    get: function () {
-      return true;
-    }
-  });
-
-  Object.defineProperty(this, 'isDirectory', {
-    get: function () {
-      return false;
-    }
-  });
-
   // Create this entry from properties from an existing FileEntry.
   if (opt_fileEntry) {
     this.file_ = opt_fileEntry.file_;
@@ -407,7 +392,9 @@ function FileEntry(opt_fileEntry) {
   }
 }
 FileEntry.prototype = new Entry();
-FileEntry.prototype.constructor = FileEntry; 
+FileEntry.prototype.constructor = FileEntry;
+FileEntry.prototype.isFile = true;
+FileEntry.prototype.isDirectory = false;
 FileEntry.prototype.createWriter = function(callback) {
   // TODO: figure out if there's a way to dispatch onwrite event as we're writing
   // data to IDB. Right now, we're only calling onwritend/onerror
@@ -451,18 +438,6 @@ FileEntry.prototype.file = function(successCallback, opt_errorCallback) {
  * @extends {Entry}
  */
 function DirectoryEntry(opt_folderEntry) {
-  Object.defineProperty(this, 'isFile', {
-    get: function () {
-      return false;
-    }
-  });
-
-  Object.defineProperty(this, 'isDirectory', {
-    get: function () {
-      return true;
-    }
-  });
-
   // Create this entry from properties from an existing DirectoryEntry.
   if (opt_folderEntry) {
     this.name = opt_folderEntry.name;
@@ -472,6 +447,8 @@ function DirectoryEntry(opt_folderEntry) {
 }
 DirectoryEntry.prototype = new Entry();
 DirectoryEntry.prototype.constructor = DirectoryEntry; 
+DirectoryEntry.prototype.isFile = false;
+DirectoryEntry.prototype.isDirectory = true;
 DirectoryEntry.prototype.createReader = function() {
   return new DirectoryReader(this);
 };
