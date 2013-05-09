@@ -374,6 +374,9 @@ Entry.prototype = {
 function FileEntry(opt_fileEntry) {
   var file_ = null;
 
+  this.isFile = true;
+  this.isDirectory = false;
+
   Object.defineProperty(this, 'file_', {
     get: function () {
       return file_;
@@ -393,8 +396,6 @@ function FileEntry(opt_fileEntry) {
 }
 FileEntry.prototype = new Entry();
 FileEntry.prototype.constructor = FileEntry;
-FileEntry.prototype.isFile = true;
-FileEntry.prototype.isDirectory = false;
 FileEntry.prototype.createWriter = function(callback) {
   // TODO: figure out if there's a way to dispatch onwrite event as we're writing
   // data to IDB. Right now, we're only calling onwritend/onerror
@@ -438,6 +439,9 @@ FileEntry.prototype.file = function(successCallback, opt_errorCallback) {
  * @extends {Entry}
  */
 function DirectoryEntry(opt_folderEntry) {
+  this.isFile = false;
+  this.isDirectory = true;
+
   // Create this entry from properties from an existing DirectoryEntry.
   if (opt_folderEntry) {
     this.name = opt_folderEntry.name;
@@ -447,8 +451,6 @@ function DirectoryEntry(opt_folderEntry) {
 }
 DirectoryEntry.prototype = new Entry();
 DirectoryEntry.prototype.constructor = DirectoryEntry; 
-DirectoryEntry.prototype.isFile = false;
-DirectoryEntry.prototype.isDirectory = true;
 DirectoryEntry.prototype.createReader = function() {
   return new DirectoryReader(this);
 };
