@@ -227,7 +227,7 @@ function FileWriter(fileEntry) {
       blob_ = blob_.slice(0, size);
     } else {
       blob_ = new Blob([blob_, new Uint8Array(size - this.length)],
-                       {type: blob_.type});
+                       {type: blob_ ? blob_.type : null});
     }
 
     position_ = 0; // truncate from beginning of file.
@@ -831,3 +831,4 @@ if (exports === window && exports.RUNNING_TESTS) {
 }
 
 })(self); // Don't use window because we want to run in workers.
+
