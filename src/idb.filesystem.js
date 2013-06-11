@@ -227,7 +227,7 @@ function FileWriter(fileEntry) {
       blob_ = blob_.slice(0, size);
     } else {
       blob_ = new Blob([blob_, new Uint8Array(size - this.length)],
-                       {type: blob_ ? blob_.type : null});
+                       {type: blob_.type});
     }
 
     position_ = 0; // truncate from beginning of file.
