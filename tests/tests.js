@@ -98,6 +98,77 @@ test('resolveLocalFileSystemURL', 2, function() {
   });
 });
 
+module('Metadata', {
+  setup: function() {
+    var self = this;
+    stop();
+    window.requestFileSystem(TEMPORARY, 1024*1024, function(fs) {
+      self.fs = fs;
+      start();
+    }, onError);
+  },
+  teardown: function() {
+
+  }
+});
+
+
+test('getMetadata()', 7, function() {
+  var fs = this.fs;
+  var entry = fs.root;
+  var FILE_NAME = 'idb_test_file_getmetadata' + Date.now();
+  var BLOB_DATA = '123';
+  var MIMETYPE = 'text/plain';
+  var LAST_MODIFIED_DATE = new Date(Date.now());
+
+  var blob = new Blob([BLOB_DATA], {type: MIMETYPE});
+  blob.lastModifiedDate = LAST_MODIFIED_DATE;
+
+  stop();
+  entry.getFile(FILE_NAME, {create: true}, function(fileEntry) {
+    fileEntry.getMetadata(function(metadata) {
+      ok(metadata instanceof Metadata, 'arg is instanceof of Metadata');
+      ok(metadata.modificationTime instanceof Date, 'modificationTime is a Date');
+      equal(metadata.size, 0, 'empty file size is 0');
+
+      fileEntry.remove(function() {
+        start();
+      });
+    }, onError);
+  }, function(e) {
+    ok(true, "getMetadata returned error");
+    start();
+  });
+
+
+  stop();
+  var FILE_NAME2 = FILE_NAME + '_2';
+  entry.getFile(FILE_NAME2, {create: true}, function(fileEntry) {
+    fileEntry.createWriter(function(writer) {
+
+      writer.onwriteend = function() {
+        fileEntry.file(function(file) {
+          fileEntry.getMetadata(function(metadata) {
+            equal(metadata.modificationTime, blob.lastModifiedDate,
+                  'modificationTime correct');
+            equal(metadata.size, blob.size, '.size is same as blob');
+
+            equal(file.type, MIMETYPE, 'file.type correctly set');
+            equal(file.lastModifiedDate, blob.lastModifiedDate,
+                  'returned file.lastModifiedDate is correct');
+
+            fileEntry.remove(function() {
+              start();
+            });
+          }, onError);
+        });
+      };
+
+      writer.write(blob);
+    });
+  }, onError);
+});
+
 module('Entry', {
   setup: function() {
     var self = this;

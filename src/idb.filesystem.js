@@ -22,7 +22,7 @@
  * "/one/two/" comes before "/one/two/ANYTHING" comes before "/one/two/0".
  *
  * @author Eric Bidelman (ebidel@gmail.com)
- * @version: 0.0.3
+ * @version: 0.0.4
  */
 
 'use strict';
@@ -51,11 +51,20 @@ FileError.NOT_FOUND_ERR  = 1;
 
 function MyFileError(obj) {
   var code_ = obj.code;
-  this.name = obj.name;
+  var name_ = obj.name;
 
-  // Required for FF 11.
+  // Required for FF.
+  this.__defineGetter__('code', function(name) {
+    return code_;
+  });
   this.__defineSetter__('code', function(code) {
     code_ = code;
+  });
+  this.__defineGetter__('name', function(name) {
+    return name_;
+  });
+  this.__defineSetter__('name', function(name) {
+    name_ = name;
   });
 }
 MyFileError.prototype = FileError.prototype;
@@ -158,6 +167,7 @@ function MyFile(opts) {
   this.size = opts.size || 0;
   this.name = opts.name || '';
   this.type = opts.type || '';
+  this.lastModifiedDate = opts.lastModifiedDate || null;
   //this.slice = Blob.prototype.slice; // Doesn't work with structured clones.
 
   this.__defineGetter__('blob_', function() {
@@ -171,6 +181,7 @@ function MyFile(opts) {
     this.size = blob_.size;
     this.name = blob_.name;
     this.type = blob_.type;
+    this.lastModifiedDate = blob_.lastModifiedDate;
   }.bind(this));
 }
 MyFile.prototype.constructor = MyFile; 
@@ -262,6 +273,8 @@ function FileWriter(fileEntry) {
 
     // Set the blob we're writing on this file entry so we can recall it later.
     fileEntry.file_.blob_ = blob_;
+    //fileEntry.file_.blob_.lastModifiedDate = data.lastModifiedDate || null;
+    fileEntry.file_.lastModifiedDate = data.lastModifiedDate || null;
 
     idb_.put(fileEntry, function(entry) {
       // Add size of data written to writer.position.
@@ -310,6 +323,28 @@ function DirectoryReader(dirEntry) {
 };
 
 /**
+ * Interface supplies information about the state of a file or directory. 
+ *
+ * Modeled from:
+ * dev.w3.org/2009/dap/file-system/file-dir-sys.html#idl-def-Metadata
+ *
+ * @constructor
+ */
+function Metadata(modificationTime, size) {
+  this.modificationTime_ = modificationTime || null;
+  this.size_ = size || 0;
+}
+
+Metadata.prototype = {
+  get modificationTime() {
+    return this.modificationTime_;
+  },
+  get size() {
+    return this.size_;
+  }
+}
+
+/**
  * Interface representing entries in a filesystem, each of which may be a File
  * or DirectoryEntry.
  *
@@ -327,8 +362,22 @@ Entry.prototype = {
   copyTo: function() {
     throw NOT_IMPLEMENTED_ERR;
   },
-  getMetadata: function() {
-    throw NOT_IMPLEMENTED_ERR;
+  getMetadata: function(successCallback, opt_errorCallback) {
+    if (!successCallback) {
+      throw Error('Expected successCallback argument.');
+    }
+
+    try {
+      if (this.isFile) {
+        successCallback(
+            new Metadata(this.file_.lastModifiedDate, this.file_.size));
+      } else {
+        opt_errorCallback(new MyFileError({code: 1001,
+            name: 'getMetadata() not implemented for DirectoryEntry'}));
+      }
+    } catch(e) {
+      opt_errorCallback && opt_errorCallback(e);
+    }
   },
   getParent: function() {
     throw NOT_IMPLEMENTED_ERR;
@@ -416,6 +465,7 @@ FileEntry.prototype.file = function(successCallback, opt_errorCallback) {
   // If we're returning a zero-length (empty) file, return the fake file obj.
   // Otherwise, return the native File object that we've stashed.
   var file = this.file_.blob_ == null ? this.file_ : this.file_.blob_;
+  file.lastModifiedDate = this.file_.lastModifiedDate;
 
   // Add Blob.slice() to this wrapped object. Currently won't work :(
   /*if (!val.slice) {
@@ -532,6 +582,7 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
   path = resolveToFullPath_(this.fullPath, path);
 
   idb_.get(path, function(fileEntry) {
+
     if (options.create === true && options.exclusive === true && fileEntry) {
       // If create and exclusive are both true, and the path already exists,
       // getFile must fail.
@@ -548,7 +599,8 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
       fileEntry.name = path.split(DIR_SEPARATOR).pop(); // Just need filename.
       fileEntry.fullPath = path;
       fileEntry.filesystem = fs_;
-      fileEntry.file_ = new MyFile({size: 0, name: fileEntry.name});
+      fileEntry.file_ = new MyFile({size: 0, name: fileEntry.name,
+                                    lastModifiedDate: new Date()});
 
       idb_.put(fileEntry, successCallback, opt_errorCallback);
 
@@ -828,6 +880,7 @@ if (exports === window && exports.RUNNING_TESTS) {
   exports['FileEntry'] = FileEntry;
   exports['DirectoryEntry'] = DirectoryEntry;
   exports['resolveToFullPath_'] = resolveToFullPath_;
+  exports['Metadata'] = Metadata;
 }
 
 })(self); // Don't use window because we want to run in workers.

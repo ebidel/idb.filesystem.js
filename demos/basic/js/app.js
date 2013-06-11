@@ -101,6 +101,7 @@ function getAllEntries(dirEntry) {
       if (entry.isFile) {
 
         entry.file(function(f) {
+
           var size = Math.round(f.size * 100 / (1024 * 1024)) / 100;
           span.title = size + 'MB';
 
@@ -108,6 +109,9 @@ function getAllEntries(dirEntry) {
             size = Math.round(f.size * 100 / 1024) / 100;
             span.title = size + 'KB';
           }
+
+          span.title += ', last modified: ' +
+                        f.lastModifiedDate.toLocaleDateString();
 
           if (f.type.match('audio/') || f.type.match('video/ogg')) {
 

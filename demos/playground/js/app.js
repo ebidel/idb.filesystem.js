@@ -171,9 +171,11 @@ function renderEntries(resultEntries) {
   }
 
   resultEntries.forEach(function(entry, i) {
-    /*entry.getMetadata(function(e) {
-      console.log(e)
-    }, onError);*/
+    entry.getMetadata(function(meta) {
+      console.log(meta.modificationTime, meta.size);
+    }, function(e) {
+      console.log(e.name);
+    });
     addEntryToList(entry, i);
   });
 }
