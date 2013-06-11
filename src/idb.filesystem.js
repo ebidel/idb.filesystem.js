@@ -342,7 +342,7 @@ Entry.prototype = {
     }
     // TODO: This doesn't protect against directories that have content in it.
     // Should throw an error instead if the dirEntry is not empty.
-    idb_.delete(this.fullPath, function() {
+    idb_['delete'](this.fullPath, function() {
       successCallback();
     }, opt_errorCallback);
   },
@@ -763,12 +763,12 @@ idb_.getAllEntries = function(fullPath, successCallback, opt_errorCallback) {
       var val = cursor.value;
 
       results.push(val.isFile ? new FileEntry(val) : new DirectoryEntry(val));
-      cursor.continue();
+      cursor['continue']();
     }
   };
 };
 
-idb_.delete = function(fullPath, successCallback, opt_errorCallback) {
+idb_['delete'] = function(fullPath, successCallback, opt_errorCallback) {
   if (!this.db) {
     return;
   }
@@ -780,7 +780,7 @@ idb_.delete = function(fullPath, successCallback, opt_errorCallback) {
   //var request = tx.objectStore(FILE_STORE_).delete(fullPath);
   var range = IDBKeyRange.bound(
       fullPath, fullPath + DIR_OPEN_BOUND, false, true);
-  var request = tx.objectStore(FILE_STORE_).delete(range);
+  var request = tx.objectStore(FILE_STORE_)['delete'](range);
 };
 
 idb_.put = function(entry, successCallback, opt_errorCallback) {
