@@ -227,17 +227,16 @@ function FileWriter(fileEntry) {
   };
 
   this.truncate = function(size) {
-    if (blob_)
-    {
+    if (blob_) {
       if (size < this.length) {
         blob_ = blob_.slice(0, size);
       } else {
         blob_ = new Blob([blob_, new Uint8Array(size - this.length)],
                        {type: blob_.type});
       }
-    }
-    else
+    } else {
       blob_ = new Blob([]);
+    }
 
     position_ = 0; // truncate from beginning of file.
 
