@@ -34,8 +34,14 @@ if (exports.requestFileSystem || exports.webkitRequestFileSystem) {
   return;
 }
 
+// Bomb out if no indexedDB available
 var indexedDB = exports.indexedDB || exports.mozIndexedDB ||
                 exports.msIndexedDB;
+if (!indexedDB)
+{
+  return;
+}
+
 exports.TEMPORARY = 0;
 exports.PERSISTENT = 1;
 
