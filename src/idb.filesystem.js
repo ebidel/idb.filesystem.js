@@ -178,7 +178,7 @@ function MyFile(opts) {
   // Need some black magic to correct the object's size/name/type based on the
   // blob that is saved.
   Object.defineProperty(this, 'blob_', {
-    get: function () {
+    get: function() {
       return blob_;
     },
     set: function (val) {
@@ -210,13 +210,13 @@ function FileWriter(fileEntry) {
   var blob_ = fileEntry.file_ ? fileEntry.file_.blob_ : null;
 
   Object.defineProperty(this, 'position', {
-    get: function () {
+    get: function() {
       return position_;
     }
   });
 
   Object.defineProperty(this, 'length', {
-    get: function () {
+    get: function() {
       return blob_ ? blob_.size : 0;
     }
   });
@@ -429,8 +429,18 @@ Entry.prototype = {
 function FileEntry(opt_fileEntry) {
   this.file_ = null;
 
-  this.isFile = true;
-  this.isDirectory = false;
+  Object.defineProperty(this, 'isFile', {
+    enumerable: true,
+    get: function() {
+      return true;
+    }
+  });
+  Object.defineProperty(this, 'isDirectory', {
+    enumerable: true,
+    get: function() {
+      return false;
+    }
+  });
 
   // Create this entry from properties from an existing FileEntry.
   if (opt_fileEntry) {
@@ -486,8 +496,18 @@ FileEntry.prototype.file = function(successCallback, opt_errorCallback) {
  * @extends {Entry}
  */
 function DirectoryEntry(opt_folderEntry) {
-  this.isFile = false;
-  this.isDirectory = true;
+  Object.defineProperty(this, 'isFile', {
+    enumerable: true,
+    get: function() {
+      return false;
+    }
+  });
+  Object.defineProperty(this, 'isDirectory', {
+    enumerable: true,
+    get: function() {
+      return true;
+    }
+  });
 
   // Create this entry from properties from an existing DirectoryEntry.
   if (opt_folderEntry) {
