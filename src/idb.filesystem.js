@@ -513,7 +513,10 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
   path = resolveToFullPath_(this.fullPath, path);
 
   idb_.get(path, function(folderEntry) {
-    if (!options) options = {};
+    if (!options) {
+      options = {};
+    }
+
     if (options.create === true && options.exclusive === true && folderEntry) {
       // If create and exclusive are both true, and the path already exists,
       // getDirectory must fail.
