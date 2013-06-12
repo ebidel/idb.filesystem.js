@@ -427,19 +427,10 @@ Entry.prototype = {
  * @extends {Entry}
  */
 function FileEntry(opt_fileEntry) {
-  var file_ = null;
+  this.file_ = null;
 
   this.isFile = true;
   this.isDirectory = false;
-
-  Object.defineProperty(this, 'file_', {
-    get: function () {
-      return file_;
-    },
-    set: function (val) {
-      file_ = val;
-    }
-  });
 
   // Create this entry from properties from an existing FileEntry.
   if (opt_fileEntry) {
