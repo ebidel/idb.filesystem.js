@@ -178,6 +178,7 @@ function MyFile(opts) {
   // Need some black magic to correct the object's size/name/type based on the
   // blob that is saved.
   Object.defineProperty(this, 'blob_', {
+    enumerable: true,
     get: function() {
       return blob_;
     },
