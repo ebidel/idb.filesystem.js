@@ -61,7 +61,7 @@ function MyFileError(obj) {
 
     // Required for FF 11.
   Object.defineProperty(this, 'code', {
-    set: function (code) {
+    set: function(code) {
       code_ = code;
     },
     get: function() {
@@ -70,7 +70,7 @@ function MyFileError(obj) {
   });
 
   Object.defineProperty(this, 'name', {
-    set: function (name) {
+    set: function(name) {
       name_ = name;
     },
     get: function() {
@@ -193,6 +193,7 @@ function MyFile(opts) {
       this.size = blob_.size;
       this.name = blob_.name;
       this.type = blob_.type;
+      this.lastModifiedDate = blob_.lastModifiedDate;
     }.bind(this)
   });
 }
