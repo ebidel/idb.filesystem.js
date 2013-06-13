@@ -249,7 +249,7 @@ function FileWriter(fileEntry) {
         blob_ = blob_.slice(0, size);
       } else {
         blob_ = new Blob([blob_, new Uint8Array(size - this.length)],
-                       {type: blob_.type});
+                         {type: blob_.type});
       }
     } else {
       blob_ = new Blob([]);
