@@ -581,7 +581,7 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
 
       // If create is not true and the path doesn't exist, getDirectory must fail.
       if (opt_errorCallback) {
-        opt_errorCallback(INVALID_MODIFICATION_ERR);
+        opt_errorCallback(NOT_FOUND_ERR);
         return;
       }
     } else if ((!options.create || options.create === false) && folderEntry &&
@@ -647,7 +647,7 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
     } else if ((!options.create || options.create === false) && !fileEntry) {
       // If create is not true and the path doesn't exist, getFile must fail.
       if (opt_errorCallback) {
-        opt_errorCallback(INVALID_MODIFICATION_ERR);
+        opt_errorCallback(NOT_FOUND_ERR);
         return;
       }
     } else if ((!options.create || options.create === false) && fileEntry &&
