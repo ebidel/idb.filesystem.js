@@ -724,7 +724,7 @@ idb_.open = function(dbName, successCallback, opt_errorCallback) {
   var self = this;
 
   // TODO: FF 12.0a1 isn't liking a db name with : in it.
-  dbName.replace(':', '_')
+  dbName = dbName.replace(':', '_')
 
   var request;
 
@@ -732,8 +732,7 @@ idb_.open = function(dbName, successCallback, opt_errorCallback) {
     // By default we use optimistic storage implement in FF26
     // Bug : https://bugzilla.mozilla.org/show_bug.cgi?id=785884
     request = indexedDB.open(dbName, { version: 1, storage: "temporary" });
-  }
-  catch(e){
+  } catch(e){
     // open syntax has changed (from numeric to object). If the browser
     // throw an exception, it doesn't accept this optimistic.
     request = indexedDB.open(dbName);
