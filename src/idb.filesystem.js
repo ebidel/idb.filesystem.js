@@ -1,18 +1,18 @@
-/** 
+/**
  * Copyright 2013 - Eric Bidelman
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- 
+
  * @fileoverview
  * A polyfill implementation of the HTML5 Filesystem API which sits on top of
  * IndexedDB as storage layer. Files and folders are stored as FileEntry and
@@ -133,7 +133,7 @@ function resolveToFullPath_(cwdFullPath, path) {
   // Add back in leading slash.
   if (fullPath[0] != DIR_SEPARATOR) {
     fullPath = DIR_SEPARATOR + fullPath;
-  } 
+  }
 
   // Replace './' by current dir. ('./one/./two' -> one/two)
   fullPath = fullPath.replace(/\.\//g, DIR_SEPARATOR);
@@ -148,7 +148,7 @@ function resolveToFullPath_(cwdFullPath, path) {
   if (fullPath[fullPath.length - 1] == DIR_SEPARATOR &&
       fullPath != DIR_SEPARATOR) {
     fullPath = fullPath.substring(0, fullPath.length - 1);
-  }  
+  }
 
   return fullPath;
 }
@@ -197,7 +197,7 @@ function MyFile(opts) {
     }.bind(this)
   });
 }
-MyFile.prototype.constructor = MyFile; 
+MyFile.prototype.constructor = MyFile;
 //MyFile.prototype.slice = Blob.prototype.slice;
 
 /**
@@ -344,7 +344,7 @@ function DirectoryReader(dirEntry) {
 };
 
 /**
- * Interface supplies information about the state of a file or directory. 
+ * Interface supplies information about the state of a file or directory.
  *
  * Modeled from:
  * dev.w3.org/2009/dap/file-system/file-dir-sys.html#idl-def-Metadata
@@ -429,7 +429,7 @@ Entry.prototype = {
  * Modeled from:
  * dev.w3.org/2009/dap/file-system/pub/FileSystem/#the-fileentry-interface
  *
- * @param {FileEntry} opt_fileEntry Optional FileEntry to initialize this 
+ * @param {FileEntry} opt_fileEntry Optional FileEntry to initialize this
  *     object from.
  * @constructor
  * @extends {Entry}
@@ -525,7 +525,7 @@ function DirectoryEntry(opt_folderEntry) {
   }
 }
 DirectoryEntry.prototype = new Entry();
-DirectoryEntry.prototype.constructor = DirectoryEntry; 
+DirectoryEntry.prototype.constructor = DirectoryEntry;
 DirectoryEntry.prototype.createReader = function() {
   return new DirectoryReader(this);
 };
@@ -555,7 +555,7 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
       dirEntry.name = path.split(DIR_SEPARATOR).pop(); // Just need filename.
       dirEntry.fullPath = path;
       dirEntry.filesystem = fs_;
-  
+
       idb_.put(dirEntry, successCallback, opt_errorCallback);
     } else if (options.create === true && folderEntry) {
 
@@ -598,7 +598,7 @@ DirectoryEntry.prototype.getDirectory = function(path, options, successCallback,
 
       // IDB won't' save methods, so we need re-create DirectoryEntry.
       successCallback(new DirectoryEntry(folderEntry));
-    } 
+    }
   }, opt_errorCallback);
 };
 
@@ -664,7 +664,7 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
 
       // IDB won't' save methods, so we need re-create the FileEntry.
       successCallback(new FileEntry(fileEntry));
-    } 
+    }
   }, opt_errorCallback);
 };
 
@@ -724,7 +724,20 @@ idb_.open = function(dbName, successCallback, opt_errorCallback) {
   var self = this;
 
   // TODO: FF 12.0a1 isn't liking a db name with : in it.
-  var request = indexedDB.open(dbName.replace(':', '_')/*, 1 /*version*/);
+  dbName.replace(':', '_')
+
+  var request;
+
+  try {
+    // By default we use optimistic storage implement in FF26
+    // Bug : https://bugzilla.mozilla.org/show_bug.cgi?id=785884
+    request = indexedDB.open(dbName, { version: 1, storage: "temporary" });
+  }
+  catch(e){
+    // open syntax has changed (from numeric to object). If the browser
+    // throw an exception, it doesn't accept this optimistic.
+    request = indexedDB.open(dbName);
+  }
 
   request.onerror = opt_errorCallback || onError;
 
@@ -733,7 +746,7 @@ idb_.open = function(dbName, successCallback, opt_errorCallback) {
 
    // console.log('onupgradeneeded: oldVersion:' + e.oldVersion,
    //           'newVersion:' + e.newVersion);
-    
+
     self.db = e.target.result;
     self.db.onerror = onError;
 
@@ -747,7 +760,7 @@ idb_.open = function(dbName, successCallback, opt_errorCallback) {
     self.db.onerror = onError;
     successCallback(e);
   };
- 
+
   request.onblocked = opt_errorCallback || onError;
 };
 
@@ -820,7 +833,7 @@ idb_.getAllEntries = function(fullPath, successCallback, opt_errorCallback) {
     results = results.filter(function(val) {
       var valPartsLen = val.fullPath.split(DIR_SEPARATOR).length;
       var fullPathPartsLen = fullPath.split(DIR_SEPARATOR).length;
-      
+
       if (fullPath == DIR_SEPARATOR && valPartsLen < fullPathPartsLen + 1) {
         // Hack to filter out entries in the root folder. This is inefficient
         // because reading the entires of fs.root (e.g. '/') returns ALL
@@ -895,7 +908,7 @@ function onError(e) {
 }
 
 // Clean up.
-// TODO: decide if this is the best place for this. 
+// TODO: decide if this is the best place for this.
 exports.addEventListener('beforeunload', function(e) {
   idb_.db.close();
 }, false);
