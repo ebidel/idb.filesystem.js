@@ -75,3 +75,5 @@ filer.js works well with idb.filesystem.js, with a few exceptions. Unimplemented
 methods in this library and `filer.open()` (because `filesystem:` URLs are not
 known by unsupported browsers). There may be other API calls in filer.js that
 do not work, but I haven't tested them.
+
+[![Analytics](https://ga-beacon.appspot.com/UA-46812528-1/ebidel/idb.filesystem.js/README)](https://github.com/igrigorik/ga-beacon)
