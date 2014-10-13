@@ -711,11 +711,22 @@ function requestFileSystem(type, size, successCallback, opt_errorCallback) {
   }, opt_errorCallback);
 }
 
-function resolveLocalFileSystemURL(url, callback, opt_errorCallback) {
-  if (opt_errorCallback) {
-    opt_errorCallback(NOT_IMPLEMENTED_ERR);
-    return;
-  }
+function resolveLocalFileSystemURL(url, successCallback, opt_errorCallback) {
+	var origin = location.protocol + '//' + location.host;
+	var base = 'filesystem:' + origin + DIR_SEPARATOR + storageType_.toLowerCase();
+	url = url.replace(base, '');
+	if (url.substr(-1) === '/') url = url.slice(0, -1);
+	idb_.get(url, function(entry) {
+		if (entry) {
+			if (entry.isFile) {
+				return successCallback(new FileEntry(entry));
+			} else if (entry.isDirectory) {
+				return successCallback(new DirectoryEntry(entry));			
+			}
+		} else {
+			opt_errorCallback && opt_errorCallback(NOT_FOUND_ERR);
+		}
+	}, opt_errorCallback);
 }
 
 // Core logic to handle IDB operations =========================================
