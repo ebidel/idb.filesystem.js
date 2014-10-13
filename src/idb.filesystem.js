@@ -37,10 +37,58 @@ if (exports.requestFileSystem || exports.webkitRequestFileSystem) {
 // Bomb out if no indexedDB available
 var indexedDB = exports.indexedDB || exports.mozIndexedDB ||
                 exports.msIndexedDB;
-if (!indexedDB)
-{
+if (!indexedDB) {
   return;
 }
+
+// Check to see if IndexedDB support blobs
+var support = new function() {
+  var dbName = "blob-support";
+  indexedDB.deleteDatabase(dbName).onsuccess = function() {
+    var request = indexedDB.open(dbName, 1.0);
+    request.onerror = function() {
+      support.blob = false;
+    };
+    request.onsuccess = function() {
+      var db = request.result;
+      try {
+        var blob = new Blob(["test"], {type:"text/plain"});
+        var transaction = db.transaction("store", "readwrite");
+        transaction.objectStore("store").put(blob, "key");
+        support.blob = true;
+      } catch (err) {
+        support.blob = false;
+      } finally {
+        db.close();
+        indexedDB.deleteDatabase(dbName);
+      }
+    };
+    request.onupgradeneeded = function() {
+      request.result.createObjectStore("store");
+    };
+  };
+};
+
+var Base64ToBlob = function(uri) {
+  uri = uri.split(',');
+  var binary = atob(uri[1]);
+  var mime = uri[0].split(':')[1].split(';')[0];
+  var buffer = new ArrayBuffer(binary.length);
+  var uint = new Uint8Array(buffer);
+  for (var n = 0; n < binary.length; n++) {
+    uint[n] = binary.charCodeAt(n);
+  }
+  var blob = new Blob([buffer], {type: mime});
+  return blob;
+};
+
+var BlobToBase64 = function(blob, onload) {
+  var reader = new window.FileReader();
+  reader.readAsDataURL(blob);
+  reader.onloadend = function() {
+    onload(reader.result);
+  };
+};
 
 if (!exports.PERSISTENT) {
   exports.TEMPORARY = 0;
@@ -277,9 +325,7 @@ function FileWriter(fileEntry) {
     // TODO: not handling onprogress, onwrite, onabort. Throw an error if
     // they're defined.
 
-    if (!blob_) {
-      blob_ = new Blob([data], {type: data.type});
-    } else {
+    if (blob_) {
       // Calc the head and tail fragments
       var head = blob_.slice(0, position_);
       var tail = blob_.slice(position_ + data.size);
@@ -294,21 +340,33 @@ function FileWriter(fileEntry) {
       // TODO: figure out if data.type should overwrite the exist blob's type.
       blob_ = new Blob([head, new Uint8Array(padding), data, tail],
                        {type: blob_.type});
+    } else {
+      blob_ = new Blob([data], {type: data.type});
     }
 
-    // Set the blob we're writing on this file entry so we can recall it later.
-    fileEntry.file_.blob_ = blob_;
-    //fileEntry.file_.blob_.lastModifiedDate = data.lastModifiedDate || null;
-    fileEntry.file_.lastModifiedDate = data.lastModifiedDate || null;
+    var writeFile = function(blob) {
+      // Blob might be a DataURI depending on browser support
+      fileEntry.file_.blob_ = blob;
+      // fileEntry.file_.blob_.lastModifiedDate = data.lastModifiedDate || null;
+      fileEntry.file_.lastModifiedDate = data.lastModifiedDate || new Date();
+      idb_.put(fileEntry, function(entry) {
+        // Set the blob we're writing on this file entry so we can recall it later.
+        fileEntry.file_.blob_ = blob_;
 
-    idb_.put(fileEntry, function(entry) {
-      // Add size of data written to writer.position.
-      position_ += data.size;
+        // Add size of data written to writer.position.
+        position_ += data.size;
 
-      if (this.onwriteend) {
-        this.onwriteend();
-      }
-    }.bind(this), this.onerror);
+        if (this.onwriteend) {
+          this.onwriteend();
+        }
+      }.bind(this), this.onerror);
+    }.bind(this);
+
+    if (support.blob) {
+      writeFile(blob_);
+    } else {
+      BlobToBase64(blob_, writeFile);
+    }
   };
 }
 
@@ -460,6 +518,9 @@ function FileEntry(opt_fileEntry) {
     this.name = opt_fileEntry.name;
     this.fullPath = opt_fileEntry.fullPath;
     this.filesystem = opt_fileEntry.filesystem;
+    if (typeof(this.file_.blob_) === "string") {
+      this.file_.blob_ = Base64ToBlob(this.file_.blob_);
+    }
   }
 }
 FileEntry.prototype = new Entry();
