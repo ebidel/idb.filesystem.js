@@ -42,8 +42,10 @@ if (!indexedDB)
   return;
 }
 
-exports.TEMPORARY = 0;
-exports.PERSISTENT = 1;
+if (!exports.PERSISTENT) {
+  exports.TEMPORARY = 0;
+  exports.PERSISTENT = 1;
+}
 
 // Prevent errors in browsers that don't support FileError.
 // TODO: FF 13+ supports DOM4 Events (DOMError). Use them instead?
@@ -52,8 +54,10 @@ if (exports.FileError === undefined) {
   FileError.prototype.prototype = Error.prototype;
 }
 
-FileError.INVALID_MODIFICATION_ERR = 9;
-FileError.NOT_FOUND_ERR  = 1;
+if (!FileError.INVALID_MODIFICATION_ERR) {
+  FileError.INVALID_MODIFICATION_ERR = 9;
+  FileError.NOT_FOUND_ERR  = 1;
+}
 
 function MyFileError(obj) {
   var code_ = obj.code;
@@ -721,7 +725,7 @@ function resolveLocalFileSystemURL(url, successCallback, opt_errorCallback) {
       if (entry.isFile) {
         return successCallback(new FileEntry(entry));
       } else if (entry.isDirectory) {
-        return successCallback(new DirectoryEntry(entry));      
+        return successCallback(new DirectoryEntry(entry));
       }
     } else {
       opt_errorCallback && opt_errorCallback(NOT_FOUND_ERR);
