@@ -52,7 +52,7 @@ var support = new function() {
     request.onsuccess = function() {
       var db = request.result;
       try {
-        var blob = new Blob(["test"], {type:"text/plain"});
+        var blob = new Blob(["test"], {type: "text/plain"});
         var transaction = db.transaction("store", "readwrite");
         transaction.objectStore("store").put(blob, "key");
         support.blob = true;
@@ -69,21 +69,32 @@ var support = new function() {
   };
 };
 
-var Base64ToBlob = function(uri) {
-  uri = uri.split(',');
-  var binary = atob(uri[1]);
-  var mime = uri[0].split(':')[1].split(';')[0];
-  var buffer = new ArrayBuffer(binary.length);
-  var uint = new Uint8Array(buffer);
-  for (var n = 0; n < binary.length; n++) {
-    uint[n] = binary.charCodeAt(n);
+var Base64ToBlob = function(dataURL) {
+  var BASE64_MARKER = ';base64,';
+  if (dataURL.indexOf(BASE64_MARKER) == -1) {
+    var parts = dataURL.split(',');
+    var contentType = parts[0].split(':')[1];
+    var raw = decodeURIComponent(parts[1]);
+
+    return new Blob([raw], {type: contentType});
   }
-  var blob = new Blob([buffer], {type: mime});
-  return blob;
+
+  var parts = dataURL.split(BASE64_MARKER);
+  var contentType = parts[0].split(':')[1];
+  var raw = window.atob(parts[1]);
+  var rawLength = raw.length;
+
+  var uInt8Array = new Uint8Array(rawLength);
+
+  for (var i = 0; i < rawLength; ++i) {
+    uInt8Array[i] = raw.charCodeAt(i);
+  }
+
+  return new Blob([uInt8Array], {type: contentType});
 };
 
 var BlobToBase64 = function(blob, onload) {
-  var reader = new window.FileReader();
+  var reader = new FileReader();
   reader.readAsDataURL(blob);
   reader.onloadend = function() {
     onload(reader.result);
@@ -780,7 +791,9 @@ function resolveLocalFileSystemURL(url, successCallback, opt_errorCallback) {
   var origin = location.protocol + '//' + location.host;
   var base = 'filesystem:' + origin + DIR_SEPARATOR + storageType_.toLowerCase();
   url = url.replace(base, '');
-  if (url.substr(-1) === '/') url = url.slice(0, -1);
+  if (url.substr(-1) === '/') {
+    url = url.slice(0, -1);
+  }
   idb_.get(url, function(entry) {
     if (entry) {
       if (entry.isFile) {
