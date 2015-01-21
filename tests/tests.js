@@ -27,7 +27,12 @@ module('window methods', {
 
 module('helpers', {
   setup: function() {
-
+    var self = this;
+    stop();
+    window.requestFileSystem(TEMPORARY, 1024*1024, function(fs) {
+      self.fs = fs;
+      start();
+    }, onError);
   },
   teardown: function() {
 
@@ -86,16 +91,40 @@ test('requestFileSystem', 10, function() {
   });
 });
 
-test('resolveLocalFileSystemURL', 2, function() {
+test('resolveLocalFileSystemURL', 12, function() {
   ok(window.resolveLocalFileSystemURL, 'window.resolveLocalFileSystemURL defined');
 
   stop();
   window.resolveLocalFileSystemURL('/', function(entry) {
-    ok(false);
-  }, function() {
-    ok(true, 'window.resolveLocalFileSystemURL() correctly threw not implemented error');
-    start();
-  });
+    ok(entry instanceof Entry, 'DirectoryEntry inherits from Entry');
+    equal(entry.isFile, false, 'DirectoryEntry.isFile == false');
+    equal(entry.isDirectory, true, 'DirectoryEntry.isDirectory == true');
+
+    var DIR_NAME = 'idb_test_file_dir' + Date.now();
+    entry.getDirectory(DIR_NAME, {create: true}, function(folderEntry) {    
+      window.resolveLocalFileSystemURL('/' + DIR_NAME, function(folderEntry) {
+        ok(folderEntry.__proto__ === DirectoryEntry.prototype, 'created entry is a DirectoryEntry');
+        equal(folderEntry.isDirectory, true, '.isDirectory == true');
+        equal(folderEntry.fullPath, '/' + DIR_NAME, "fullPath is correct");
+        equal(folderEntry.name, DIR_NAME, "folder name matches one that was set");
+
+        var FILE_NAME = 'idb_test_file_name' + Date.now();
+        folderEntry.getFile(FILE_NAME, {create: true}, function(fileEntry) {
+          window.resolveLocalFileSystemURL('/' + DIR_NAME + '/' + FILE_NAME, function(fileEntry) {
+            ok(fileEntry.__proto__ === FileEntry.prototype, 'created file is a FileEntry');
+            equal(fileEntry.isFile, true, '.isFile == true');
+            equal(fileEntry.fullPath, '/' + DIR_NAME + '/' + FILE_NAME, "fullPath is correct");
+            equal(fileEntry.name, FILE_NAME, "filename matches one set");
+            fileEntry.remove(function() {
+              folderEntry.remove(function() {
+                start();
+              });
+            });
+          }, onError);
+        }, onError);
+      }, onError);
+    }, onError);
+  }, onError);
 });
 
 module('Metadata', {
