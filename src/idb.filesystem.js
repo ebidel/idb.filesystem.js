@@ -1006,6 +1006,7 @@ if (exports === window && exports.RUNNING_TESTS) {
   exports['DirectoryEntry'] = DirectoryEntry;
   exports['resolveToFullPath_'] = resolveToFullPath_;
   exports['Metadata'] = Metadata;
+  exports['Base64ToBlob'] = Base64ToBlob;
 }
 
 })(self); // Don't use window because we want to run in workers.

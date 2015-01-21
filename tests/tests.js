@@ -127,6 +127,19 @@ test('resolveLocalFileSystemURL', 12, function() {
   }, onError);
 });
 
+test('Base64ToBlob()', 5, function() {
+  var dataURL = 'data:text/html;base64,VGhpcyBpcyBhIHRlc3QK';
+  var blob = Base64ToBlob(dataURL);
+  ok(blob.__proto__ == Blob.prototype, 'Result is a Blob');
+  equal(blob.size, window.atob('VGhpcyBpcyBhIHRlc3QK').length, 'blob.size');
+  equal(blob.type, 'text/html', 'blob.type');
+
+  var dataURL2 = 'data:text/html,<p>Hi there</p>';
+  var blob = Base64ToBlob(dataURL2);
+  equal(blob.size, '<p>Hi there</p>'.length, 'blob.size');
+  equal(blob.type, 'text/html', 'blob.type');
+});
+
 module('Metadata', {
   setup: function() {
     var self = this;
