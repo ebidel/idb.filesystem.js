@@ -106,49 +106,34 @@ var DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1);
 // one. This method ensures path is legit!
 function resolveToFullPath_(cwdFullPath, path) {
   var fullPath = path;
-
+  
   var relativePath = path[0] != DIR_SEPARATOR;
   if (relativePath) {
-    fullPath = cwdFullPath;
-    if (cwdFullPath != DIR_SEPARATOR) {
-      fullPath += DIR_SEPARATOR + path;
-    } else {
-      fullPath += path;
-    }
+    fullPath = cwdFullPath + DIR_SEPARATOR + path;
   }
 
-  // Adjust '..'s by removing parent directories when '..' flows in path.
+  // Normalize '.'s,  '..'s and '//'s.
   var parts = fullPath.split(DIR_SEPARATOR);
+  var finalParts = [];
   for (var i = 0; i < parts.length; ++i) {
     var part = parts[i];
-    if (part == '..') {
-      parts[i - 1] = '';
-      parts[i] = '';
+    if (part === '..') {
+      // Go up one level.
+      if (!finalParts.length)
+        throw Error('Invalid path');
+      finalParts.pop();
+    } else if (part === '.') {
+      // Skip over the current directory.
+    } else if (part !== '') {
+      // Eliminate sequences of '/'s as well as possible leading/trailing '/'s. 
+      finalParts.push(part);
     }
   }
-  fullPath = parts.filter(function(el) {
-    return el;
-  }).join(DIR_SEPARATOR);
 
-  // Add back in leading slash.
-  if (fullPath[0] != DIR_SEPARATOR) {
-    fullPath = DIR_SEPARATOR + fullPath;
-  } 
+  fullPath = DIR_SEPARATOR + finalParts.join(DIR_SEPARATOR);
 
-  // Replace './' by current dir. ('./one/./two' -> one/two)
-  fullPath = fullPath.replace(/\.\//g, DIR_SEPARATOR);
-
-  // Replace '//' with '/'.
-  fullPath = fullPath.replace(/\/\//g, DIR_SEPARATOR);
-
-  // Replace '/.' with '/'.
-  fullPath = fullPath.replace(/\/\./g, DIR_SEPARATOR);
-
-  // Remove '/' if it appears on the end.
-  if (fullPath[fullPath.length - 1] == DIR_SEPARATOR &&
-      fullPath != DIR_SEPARATOR) {
-    fullPath = fullPath.substring(0, fullPath.length - 1);
-  }  
+  // fullPath is guaranteed to be normalized by construction at this point:
+  // '.'s, '..'s, '//'s will never appear in it.
 
   return fullPath;
 }
