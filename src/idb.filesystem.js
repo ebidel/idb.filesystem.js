@@ -106,7 +106,7 @@ var DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1);
 // one. This method ensures path is legit!
 function resolveToFullPath_(cwdFullPath, path) {
   var fullPath = path;
-  
+
   var relativePath = path[0] != DIR_SEPARATOR;
   if (relativePath) {
     fullPath = cwdFullPath + DIR_SEPARATOR + path;
