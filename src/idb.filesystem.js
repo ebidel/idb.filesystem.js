@@ -119,8 +119,9 @@ function resolveToFullPath_(cwdFullPath, path) {
     var part = parts[i];
     if (part === '..') {
       // Go up one level.
-      if (!finalParts.length)
+      if (!finalParts.length) {
         throw Error('Invalid path');
+      }
       finalParts.pop();
     } else if (part === '.') {
       // Skip over the current directory.
