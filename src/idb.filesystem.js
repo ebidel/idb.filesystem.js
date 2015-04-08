@@ -37,13 +37,74 @@ if (exports.requestFileSystem || exports.webkitRequestFileSystem) {
 // Bomb out if no indexedDB available
 var indexedDB = exports.indexedDB || exports.mozIndexedDB ||
                 exports.msIndexedDB;
-if (!indexedDB)
-{
+if (!indexedDB) {
   return;
 }
 
-exports.TEMPORARY = 0;
-exports.PERSISTENT = 1;
+// Check to see if IndexedDB support blobs
+var support = new function() {
+  var dbName = "blob-support";
+  indexedDB.deleteDatabase(dbName).onsuccess = function() {
+    var request = indexedDB.open(dbName, 1.0);
+    request.onerror = function() {
+      support.blob = false;
+    };
+    request.onsuccess = function() {
+      var db = request.result;
+      try {
+        var blob = new Blob(["test"], {type: "text/plain"});
+        var transaction = db.transaction("store", "readwrite");
+        transaction.objectStore("store").put(blob, "key");
+        support.blob = true;
+      } catch (err) {
+        support.blob = false;
+      } finally {
+        db.close();
+        indexedDB.deleteDatabase(dbName);
+      }
+    };
+    request.onupgradeneeded = function() {
+      request.result.createObjectStore("store");
+    };
+  };
+};
+
+var Base64ToBlob = function(dataURL) {
+  var BASE64_MARKER = ';base64,';
+  if (dataURL.indexOf(BASE64_MARKER) == -1) {
+    var parts = dataURL.split(',');
+    var contentType = parts[0].split(':')[1];
+    var raw = decodeURIComponent(parts[1]);
+
+    return new Blob([raw], {type: contentType});
+  }
+
+  var parts = dataURL.split(BASE64_MARKER);
+  var contentType = parts[0].split(':')[1];
+  var raw = window.atob(parts[1]);
+  var rawLength = raw.length;
+
+  var uInt8Array = new Uint8Array(rawLength);
+
+  for (var i = 0; i < rawLength; ++i) {
+    uInt8Array[i] = raw.charCodeAt(i);
+  }
+
+  return new Blob([uInt8Array], {type: contentType});
+};
+
+var BlobToBase64 = function(blob, onload) {
+  var reader = new FileReader();
+  reader.readAsDataURL(blob);
+  reader.onloadend = function() {
+    onload(reader.result);
+  };
+};
+
+if (!exports.PERSISTENT) {
+  exports.TEMPORARY = 0;
+  exports.PERSISTENT = 1;
+}
 
 // Prevent errors in browsers that don't support FileError.
 // TODO: FF 13+ supports DOM4 Events (DOMError). Use them instead?
@@ -52,8 +113,10 @@ if (exports.FileError === undefined) {
   FileError.prototype.prototype = Error.prototype;
 }
 
-FileError.INVALID_MODIFICATION_ERR = 9;
-FileError.NOT_FOUND_ERR  = 1;
+if (!FileError.INVALID_MODIFICATION_ERR) {
+  FileError.INVALID_MODIFICATION_ERR = 9;
+  FileError.NOT_FOUND_ERR  = 1;
+}
 
 function MyFileError(obj) {
   var code_ = obj.code;
@@ -273,9 +336,7 @@ function FileWriter(fileEntry) {
     // TODO: not handling onprogress, onwrite, onabort. Throw an error if
     // they're defined.
 
-    if (!blob_) {
-      blob_ = new Blob([data], {type: data.type});
-    } else {
+    if (blob_) {
       // Calc the head and tail fragments
       var head = blob_.slice(0, position_);
       var tail = blob_.slice(position_ + data.size);
@@ -290,21 +351,35 @@ function FileWriter(fileEntry) {
       // TODO: figure out if data.type should overwrite the exist blob's type.
       blob_ = new Blob([head, new Uint8Array(padding), data, tail],
                        {type: blob_.type});
+    } else {
+      blob_ = new Blob([data], {type: data.type});
     }
 
-    // Set the blob we're writing on this file entry so we can recall it later.
-    fileEntry.file_.blob_ = blob_;
-    //fileEntry.file_.blob_.lastModifiedDate = data.lastModifiedDate || null;
-    fileEntry.file_.lastModifiedDate = data.lastModifiedDate || null;
+    var writeFile = function(blob) {
+      // Blob might be a DataURI depending on browser support.
+      fileEntry.file_.blob_ = blob;
+      fileEntry.file_.lastModifiedDate = data.lastModifiedDate || new Date();
+      idb_.put(fileEntry, function(entry) {
+        if (!support.blob) {
+		  // Set the blob we're writing on this file entry so we can recall it later.
+		  fileEntry.file_.blob_ = blob_;
+		  fileEntry.file_.lastModifiedDate = data.lastModifiedDate || null;
+		}
 
-    idb_.put(fileEntry, function(entry) {
-      // Add size of data written to writer.position.
-      position_ += data.size;
+        // Add size of data written to writer.position.
+        position_ += data.size;
 
-      if (this.onwriteend) {
-        this.onwriteend();
-      }
-    }.bind(this), this.onerror);
+        if (this.onwriteend) {
+          this.onwriteend();
+        }
+      }.bind(this), this.onerror);
+    }.bind(this);
+
+    if (support.blob) {
+      writeFile(blob_);
+    } else {
+      BlobToBase64(blob_, writeFile);
+    }
   };
 }
 
@@ -456,6 +531,9 @@ function FileEntry(opt_fileEntry) {
     this.name = opt_fileEntry.name;
     this.fullPath = opt_fileEntry.fullPath;
     this.filesystem = opt_fileEntry.filesystem;
+    if (typeof(this.file_.blob_) === "string") {
+      this.file_.blob_ = Base64ToBlob(this.file_.blob_);
+    }
   }
 }
 FileEntry.prototype = new Entry();
@@ -711,10 +789,27 @@ function requestFileSystem(type, size, successCallback, opt_errorCallback) {
   }, opt_errorCallback);
 }
 
-function resolveLocalFileSystemURL(url, callback, opt_errorCallback) {
-  if (opt_errorCallback) {
-    opt_errorCallback(NOT_IMPLEMENTED_ERR);
-    return;
+function resolveLocalFileSystemURL(url, successCallback, opt_errorCallback) {
+  var origin = location.protocol + '//' + location.host;
+  var base = 'filesystem:' + origin + DIR_SEPARATOR + storageType_.toLowerCase();
+  url = url.replace(base, '');
+  if (url.substr(-1) === '/') {
+    url = url.slice(0, -1);
+  }
+  if (url) {
+    idb_.get(url, function(entry) {
+      if (entry) {
+        if (entry.isFile) {
+          return successCallback(new FileEntry(entry));
+        } else if (entry.isDirectory) {
+          return successCallback(new DirectoryEntry(entry));
+        }
+      } else {
+        opt_errorCallback && opt_errorCallback(NOT_FOUND_ERR);
+      }
+    }, opt_errorCallback);
+  } else {
+    successCallback(fs_.root);
   }
 }
 
@@ -911,6 +1006,7 @@ if (exports === window && exports.RUNNING_TESTS) {
   exports['DirectoryEntry'] = DirectoryEntry;
   exports['resolveToFullPath_'] = resolveToFullPath_;
   exports['Metadata'] = Metadata;
+  exports['Base64ToBlob'] = Base64ToBlob;
 }
 
 })(self); // Don't use window because we want to run in workers.
