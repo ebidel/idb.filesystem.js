@@ -358,9 +358,9 @@ function FileWriter(fileEntry) {
     var writeFile = function(blob) {
       // Blob might be a DataURI depending on browser support.
       fileEntry.file_.blob_ = blob;
-      fileEntry.file_.lastModifiedDate = data.lastModifiedDate || null;
+      fileEntry.file_.lastModifiedDate = data.lastModifiedDate || new Date();
       idb_.put(fileEntry, function(entry) {
-        if (support.blob === false) {
+        if (!support.blob) {
 		  // Set the blob we're writing on this file entry so we can recall it later.
 		  fileEntry.file_.blob_ = blob_;
 		  fileEntry.file_.lastModifiedDate = data.lastModifiedDate || null;
@@ -375,7 +375,7 @@ function FileWriter(fileEntry) {
       }.bind(this), this.onerror);
     }.bind(this);
 
-    if (support.blob === true) {
+    if (support.blob) {
       writeFile(blob_);
     } else {
       BlobToBase64(blob_, writeFile);
@@ -798,15 +798,15 @@ function resolveLocalFileSystemURL(url, successCallback, opt_errorCallback) {
   }
   if (url) {
     idb_.get(url, function(entry) {
-    if (entry) {
-      if (entry.isFile) {
-      return successCallback(new FileEntry(entry));
-      } else if (entry.isDirectory) {
-      return successCallback(new DirectoryEntry(entry));
+      if (entry) {
+        if (entry.isFile) {
+          return successCallback(new FileEntry(entry));
+        } else if (entry.isDirectory) {
+          return successCallback(new DirectoryEntry(entry));
+        }
+      } else {
+        opt_errorCallback && opt_errorCallback(NOT_FOUND_ERR);
       }
-    } else {
-      opt_errorCallback && opt_errorCallback(NOT_FOUND_ERR);
-    }
     }, opt_errorCallback);
   } else {
     successCallback(fs_.root);
