@@ -13,6 +13,10 @@ Supported Browsers
 ------------------
 
 * Firefox 11+
+* Safari 7.1+
+* iOS 8+
+* Opera 15+
+* IE 10+
 
 Unlisted browsers and/or versions (e.g. earlier versions of Firefox) that
 support IndexedDB will likely work; I just haven't tested them.
