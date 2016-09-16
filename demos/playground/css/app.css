@@ -30,7 +30,7 @@ body ::-webkit-scrollbar-corner {
 }
 
 html, body {
-  font: 15px normal 'Open Sans', Trebuchet, Arial, sans-serif;
+  font: 15px 'Open Sans', Trebuchet, Arial, sans-serif;
   color: #444;
   margin: 0;
   height: 100%;
@@ -470,7 +470,7 @@ header .active {
   text-decoration: underline;
 }
 #log {
-  font: 90% normal 'Courier New';
+  font: 90% 'Courier New';
   position: absolute;
   background: -webkit-linear-gradient(#fff 40%, #eee);
   background: -moz-linear-gradient(#fff 40%, #eee);
