@@ -1,0 +1,29 @@
+{
+  "name": "idb.filesystem.js",
+  "version": "0.0.5",
+  "description": "HTML5 Filesystem API polyfill using IndexedDB",
+  "main": "src/idb.filesystem.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ebidel/idb.filesystem.js.git"
+  },
+  "author": "Eric Bidelman <ebidel@>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/ebidel/idb.filesystem.js/issues"
+  },
+  "homepage": "https://github.com/ebidel/idb.filesystem.js#readme",
+  "devDependencies": {
+    "google-closure-compiler-js": "*",
+    "gulp": "^3.9.1",
+    "gulp-inject-version": "^1.0.1",
+    "gulp-license": "^1.1.0",
+    "gulp-load-plugins": "^1.3.0"
+  }
+}

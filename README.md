@@ -39,10 +39,17 @@ is a slightly modified version of filer.js's [playground app](http://html5-demos
 Getting started
 ===============
 
-**See my [HTML5Rocks article](http://www.html5rocks.com/tutorials/file/filesystem/)
-on the Filesystem API.**
+Install the polyfill:
 
-Basic example of opening the filesystem and writing to a new .txt file:
+    npm install idb.filesystem.js --save
+
+Drop it on your page:
+
+    <script src="node_modules/idb.filesystem.js/dist/idb.filesystem.min.js" async></script>
+
+Then use the Filesystem API as normal! **See my [HTML5Rocks article](http://www.html5rocks.com/tutorials/file/filesystem/) on using the Filesystem API.**
+
+Basic example of opening a filesystem and writing to a new .txt file:
 
     window.requestFileSystem(TEMPORARY, 1024 * 1024, function(fs) {
       console.log('Opened ' + fs.name);
@@ -79,5 +86,24 @@ filer.js works well with idb.filesystem.js, with a few exceptions. Unimplemented
 methods in this library and `filer.open()` (because `filesystem:` URLs are not
 known by unsupported browsers). There may be other API calls in filer.js that
 do not work, but I haven't tested them.
+
+## Contributing
+
+### Building
+
+Install the dependencies and compile the library by running `gulp`:
+
+    npm install
+    gulp
+
+This will output a built file to `dist/idb.filesystem.min.js`.
+
+### Releasing
+
+To cut a new release, run:
+
+    npm version patch
+    gulp
+    npm publish
 
 [![Analytics](https://ga-beacon.appspot.com/UA-46812528-1/ebidel/idb.filesystem.js/README)](https://github.com/igrigorik/ga-beacon)

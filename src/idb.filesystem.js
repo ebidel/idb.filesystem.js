@@ -22,7 +22,6 @@
  * "/one/two/" comes before "/one/two/ANYTHING" comes before "/one/two/0".
  *
  * @author Eric Bidelman (ebidel@gmail.com)
- * @version: 0.0.6
  */
 
 'use strict';
@@ -35,19 +34,21 @@ if (exports.requestFileSystem || exports.webkitRequestFileSystem) {
 }
 
 // Bomb out if no indexedDB available
-var indexedDB = exports.indexedDB || exports.mozIndexedDB ||
-                exports.msIndexedDB;
+const indexedDB = exports.indexedDB || exports.mozIndexedDB ||
+                  exports.msIndexedDB;
 if (!indexedDB) {
   return;
 }
 
+let IDB_SUPPORTS_BLOB = true;
+
 // Check to see if IndexedDB support blobs
-var support = new function() {
+const support = function() {
   var dbName = "blob-support";
   indexedDB.deleteDatabase(dbName).onsuccess = function() {
     var request = indexedDB.open(dbName, 1);
     request.onerror = function() {
-      support.blob = false;
+      IDB_SUPPORTS_BLOB = false;
     };
     request.onsuccess = function() {
       var db = request.result;
@@ -55,9 +56,9 @@ var support = new function() {
         var blob = new Blob(["test"], {type: "text/plain"});
         var transaction = db.transaction("store", "readwrite");
         transaction.objectStore("store").put(blob, "key");
-        support.blob = true;
+        IDB_SUPPORTS_BLOB = true;
       } catch (err) {
-        support.blob = false;
+        IDB_SUPPORTS_BLOB = false;
       } finally {
         db.close();
         indexedDB.deleteDatabase(dbName);
@@ -69,7 +70,7 @@ var support = new function() {
   };
 };
 
-var Base64ToBlob = function(dataURL) {
+const Base64ToBlob = function(dataURL) {
   var BASE64_MARKER = ';base64,';
   if (dataURL.indexOf(BASE64_MARKER) == -1) {
     var parts = dataURL.split(',');
@@ -93,7 +94,7 @@ var Base64ToBlob = function(dataURL) {
   return new Blob([uInt8Array], {type: contentType});
 };
 
-var BlobToBase64 = function(blob, onload) {
+const BlobToBase64 = function(blob, onload) {
   var reader = new FileReader();
   reader.readAsDataURL(blob);
   reader.onloadend = function() {
@@ -141,28 +142,28 @@ function MyFileError(obj) {
     }
   });
 }
+
 MyFileError.prototype = FileError.prototype;
 MyFileError.prototype.toString = Error.prototype.toString;
 
-var INVALID_MODIFICATION_ERR = new MyFileError({
+const INVALID_MODIFICATION_ERR = new MyFileError({
       code: FileError.INVALID_MODIFICATION_ERR,
       name: 'INVALID_MODIFICATION_ERR'});
-var NOT_IMPLEMENTED_ERR = new MyFileError({code: 1000,
-                                           name: 'Not implemented'});
-var NOT_FOUND_ERR = new MyFileError({code: FileError.NOT_FOUND_ERR,
-                                     name: 'Not found'});
+const NOT_IMPLEMENTED_ERR = new MyFileError({code: 1000,
+                                             name: 'Not implemented'});
+const NOT_FOUND_ERR = new MyFileError({code: FileError.NOT_FOUND_ERR,
+                                       name: 'Not found'});
 
-var fs_ = null;
+let fs_ = null;
 
 // Browsers other than Chrome don't implement persistent vs. temporary storage.
 // but default to temporary anyway.
-var storageType_ = 'temporary';
-var idb_ = {};
-idb_.db = null;
-var FILE_STORE_ = 'entries';
+let storageType_ = 'temporary';
+const idb_ = {db: null};
+const FILE_STORE_ = 'entries';
 
-var DIR_SEPARATOR = '/';
-var DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1);
+const DIR_SEPARATOR = '/';
+const DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1);
 
 // When saving an entry, the fullPath should always lead with a slash and never
 // end with one (e.g. a directory). Also, resolve '.' and '..' to an absolute
@@ -341,16 +342,16 @@ function FileWriter(fileEntry) {
       blob_ = new Blob([data], {type: data.type});
     }
 
-    var writeFile = function(blob) {
+    const writeFile = function(blob) {
       // Blob might be a DataURI depending on browser support.
       fileEntry.file_.blob_ = blob;
       fileEntry.file_.lastModifiedDate = data.lastModifiedDate || new Date();
       idb_.put(fileEntry, function(entry) {
-        if (!support.blob) {
-		  // Set the blob we're writing on this file entry so we can recall it later.
-		  fileEntry.file_.blob_ = blob_;
-		  fileEntry.file_.lastModifiedDate = data.lastModifiedDate || null;
-		}
+        if (!IDB_SUPPORTS_BLOB) {
+          // Set the blob we're writing on this file entry so we can recall it later.
+          fileEntry.file_.blob_ = blob_;
+          fileEntry.file_.lastModifiedDate = data.lastModifiedDate || null;
+        }
 
         // Add size of data written to writer.position.
         position_ += data.size;
@@ -361,7 +362,7 @@ function FileWriter(fileEntry) {
       }.bind(this), this.onerror);
     }.bind(this);
 
-    if (support.blob) {
+    if (IDB_SUPPORTS_BLOB) {
       writeFile(blob_);
     } else {
       BlobToBase64(blob_, writeFile);
