@@ -1,6 +1,6 @@
 {
   "name": "idb.filesystem.js",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "HTML5 Filesystem API polyfill using IndexedDB",
   "main": "src/idb.filesystem.js",
   "directories": {
