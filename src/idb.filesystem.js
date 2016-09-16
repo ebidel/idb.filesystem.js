@@ -71,8 +71,7 @@ var IDB_SUPPORTS_BLOB = false;
   };
 };
 
-// this is called to set IDB_SUPPORTS_BLOB at all times
-  setSupportsBlob();
+setSupportsBlob();
 
 function Base64ToBlob(dataURL) {
   var BASE64_MARKER = ';base64,';
