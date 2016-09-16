@@ -22,7 +22,7 @@
  * "/one/two/" comes before "/one/two/ANYTHING" comes before "/one/two/0".
  *
  * @author Eric Bidelman (ebidel@gmail.com)
- * @version: 0.0.5
+ * @version: 0.0.6
  */
 
 'use strict';
