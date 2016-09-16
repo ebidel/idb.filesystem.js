@@ -34,16 +34,17 @@ if (exports.requestFileSystem || exports.webkitRequestFileSystem) {
 }
 
 // Bomb out if no indexedDB available
-const indexedDB = exports.indexedDB || exports.mozIndexedDB ||
+var indexedDB = exports.indexedDB || exports.mozIndexedDB ||
                   exports.msIndexedDB;
 if (!indexedDB) {
   return;
 }
 
-let IDB_SUPPORTS_BLOB = true;
+var IDB_SUPPORTS_BLOB = false;
+
 
 // Check to see if IndexedDB support blobs
-const support = function() {
+ function support() {
   var dbName = "blob-support";
   indexedDB.deleteDatabase(dbName).onsuccess = function() {
     var request = indexedDB.open(dbName, 1);
@@ -70,7 +71,10 @@ const support = function() {
   };
 };
 
-const Base64ToBlob = function(dataURL) {
+// this is called to set IDB_SUPPORTS_BLOB at all times
+support();
+
+function Base64ToBlob(dataURL) {
   var BASE64_MARKER = ';base64,';
   if (dataURL.indexOf(BASE64_MARKER) == -1) {
     var parts = dataURL.split(',');
@@ -94,7 +98,7 @@ const Base64ToBlob = function(dataURL) {
   return new Blob([uInt8Array], {type: contentType});
 };
 
-const BlobToBase64 = function(blob, onload) {
+function BlobToBase64(blob, onload) {
   var reader = new FileReader();
   reader.readAsDataURL(blob);
   reader.onloadend = function() {
@@ -146,24 +150,24 @@ function MyFileError(obj) {
 MyFileError.prototype = FileError.prototype;
 MyFileError.prototype.toString = Error.prototype.toString;
 
-const INVALID_MODIFICATION_ERR = new MyFileError({
+var INVALID_MODIFICATION_ERR = new MyFileError({
       code: FileError.INVALID_MODIFICATION_ERR,
       name: 'INVALID_MODIFICATION_ERR'});
-const NOT_IMPLEMENTED_ERR = new MyFileError({code: 1000,
+var NOT_IMPLEMENTED_ERR = new MyFileError({code: 1000,
                                              name: 'Not implemented'});
-const NOT_FOUND_ERR = new MyFileError({code: FileError.NOT_FOUND_ERR,
+var NOT_FOUND_ERR = new MyFileError({code: FileError.NOT_FOUND_ERR,
                                        name: 'Not found'});
 
-let fs_ = null;
+var fs_ = null;
 
 // Browsers other than Chrome don't implement persistent vs. temporary storage.
 // but default to temporary anyway.
-let storageType_ = 'temporary';
-const idb_ = {db: null};
-const FILE_STORE_ = 'entries';
+var storageType_ = 'temporary';
+var idb_ = {db: null};
+var FILE_STORE_ = 'entries';
 
-const DIR_SEPARATOR = '/';
-const DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1);
+var DIR_SEPARATOR = '/';
+var DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1);
 
 // When saving an entry, the fullPath should always lead with a slash and never
 // end with one (e.g. a directory). Also, resolve '.' and '..' to an absolute
@@ -342,7 +346,7 @@ function FileWriter(fileEntry) {
       blob_ = new Blob([data], {type: data.type});
     }
 
-    const writeFile = function(blob) {
+    var writeFile = function(blob) {
       // Blob might be a DataURI depending on browser support.
       fileEntry.file_.blob_ = blob;
       fileEntry.file_.lastModifiedDate = data.lastModifiedDate || new Date();

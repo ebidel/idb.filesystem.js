@@ -53,11 +53,10 @@ function writeFile(file, i) {
       };
       fileWriter.onwriteend = function() {
         console.log('WRITE END');
+        getAllEntries(cwd);
       };
       fileWriter.write(file);
     }, onError);
-
-    getAllEntries(cwd);
   }, onError);
 }
 
