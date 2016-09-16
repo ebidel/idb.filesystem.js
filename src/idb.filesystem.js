@@ -701,6 +701,8 @@ DirectoryEntry.prototype.getFile = function(path, options, successCallback,
 
     } else if (options.create === true && fileEntry) {
       if (fileEntry.isFile) {
+        if (!fileEntry.file_)
+          fileEntry.file_ = new MyFile({size: 0, name: fileEntry.name});
         // IDB won't save methods, so we need re-create the FileEntry.
         successCallback(new FileEntry(fileEntry));
       } else {
