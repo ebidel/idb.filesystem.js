@@ -107,3 +107,8 @@ To cut a new release, run:
     npm publish
 
 [![Analytics](https://ga-beacon.appspot.com/UA-46812528-1/ebidel/idb.filesystem.js/README)](https://github.com/igrigorik/ga-beacon)
+
+Finall note
+-----------
+If you would like to see native support in Edge and Firefox, make your vote count by going to modern.ie and bugzilla and vote for Filesystem API [here](https://bugzilla.mozilla.org/show_bug.cgi?id=910387) and [here](https://dev.modern.ie/platform/status/filewriter/).
+Don't post anoying comments like +1 or "we want this NOW", that is what the voting system is for ;)
