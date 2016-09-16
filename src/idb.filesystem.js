@@ -44,7 +44,7 @@ var IDB_SUPPORTS_BLOB = false;
 
 
 // Check to see if IndexedDB support blobs
- function support() {
+ function setSupportsBlob() {
   var dbName = "blob-support";
   indexedDB.deleteDatabase(dbName).onsuccess = function() {
     var request = indexedDB.open(dbName, 1);
@@ -72,7 +72,7 @@ var IDB_SUPPORTS_BLOB = false;
 };
 
 // this is called to set IDB_SUPPORTS_BLOB at all times
-support();
+  setSupportsBlob();
 
 function Base64ToBlob(dataURL) {
   var BASE64_MARKER = ';base64,';
