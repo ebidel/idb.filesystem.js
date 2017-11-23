@@ -42,8 +42,8 @@ if (!indexedDB) {
 
 let IDB_SUPPORTS_BLOB = true;
 
-// Check to see if IndexedDB support blobs
-const support = function() {
+// Check to see if IndexedDB support blobs.
+const support = new function() {
   var dbName = "blob-support";
   indexedDB.deleteDatabase(dbName).onsuccess = function() {
     var request = indexedDB.open(dbName, 1);
