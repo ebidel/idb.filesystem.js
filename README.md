@@ -28,11 +28,11 @@ Demo
 ===============
 
 Two demo apps are included under [/demos](//github.com/ebidel/idb.filesystem.js/tree/master/demos). The
-[basic demo](http://html5-demos.appspot.com/static/filesystem/idb.filesystem.js/demos/basic/index.html)
+[basic demo](https://rawgit.com/ebidel/idb.filesystem.js/master/demos/basic/)
 allows you add files to the app by drag and drop from the desktop. The second demo 
-is a slightly modified version of filer.js's [playground app](http://html5-demos.appspot.com/static/filesystem/idb.filesystem.js/demos/playground/index.html). What's exciting is that the same app now works in other browsers besides Chrome!
+is a slightly modified version of filer.js's [playground app](https://rawgit.com/ebidel/idb.filesystem.js/master/demos/playground/). What's exciting is that the same app now works in other browsers besides Chrome!
 
-<a href="http://html5-demos.appspot.com/static/filesystem/idb.filesystem.js/demos/basic/index.html">
+<a href="https://rawgit.com/ebidel/idb.filesystem.js/master/demos/basic/">
   <img src="https://raw.github.com/ebidel/idb.filesystem.js/master/demos/playground/images/demo_screenshot.png" title="Demo app screenshot" alt="Demo app screenshot">
 </a>
 
